@@ -1,0 +1,42 @@
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "办事"
+      }
+    },
+    {
+      "path": "pages/history/history",
+      "style": {
+        "navigationBarTitleText": "历史"
+      }
+    },
+    {
+      "path": "pages/me/me",
+      "style": {
+        "navigationBarTitleText": "我的"
+      }
+    }
+  ],
+  "tabBar": {
+    "color": "#7A7E83",
+    "selectedColor": "#007AFF",
+    "borderStyle": "black",
+    "backgroundColor": "#ffffff",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "办事"
+      },
+      {
+        "pagePath": "pages/history/history",
+        "text": "历史"
+      },
+      {
+        "pagePath": "pages/me/me",
+        "text": "我的"
+      }
+    ]
+  }
+}
