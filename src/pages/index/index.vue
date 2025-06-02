@@ -1,12 +1,13 @@
 <template>
   <view class="container">
     <!-- 定位信息 -->
-    <view class="location-card">
+    <view class="location-card" @click="chooseLocation">
       <text class="location-icon">📍</text>
       <view class="location-content">
         <text class="location-title">当前位置</text>
         <text class="location-info">{{ locationInfo }}</text>
       </view>
+      <text class="location-action">></text>
     </view>
 
     <!-- 问题反馈表单 -->
@@ -63,8 +64,10 @@
 <script setup>
 import { ref } from 'vue'
 
-// 定位信息（模拟数据）
-const locationInfo = ref('XX小区 3号楼 1单元')
+// 定位信息
+const locationInfo = ref('点击选择位置')
+const latitude = ref('')
+const longitude = ref('')
 
 // 图片相关
 const imageList = ref([])
@@ -185,13 +188,62 @@ async function getVoiceResult() {
   })
 }
 
+// 选择位置
+const chooseLocation = () => {
+  uni.chooseLocation({
+    success: (res) => {
+      console.log('位置信息：', res)
+      locationInfo.value = res.name || res.address || '未知位置'
+      latitude.value = res.latitude
+      longitude.value = res.longitude
+      
+      // 可以将详细地址保存
+      if (res.address) {
+        locationInfo.value = res.address
+      }
+    },
+    fail: (err) => {
+      console.error('选择位置失败：', err)
+      uni.showToast({
+        title: '获取位置失败，请检查定位权限',
+        icon: 'none',
+        duration: 2000
+      })
+    }
+  })
+}
+
 // 提交表单
 const submitForm = () => {
+  // 表单验证
+  if (!latitude.value || !longitude.value) {
+    uni.showToast({
+      title: '请先选择位置',
+      icon: 'none'
+    })
+    return
+  }
+  
+  if (!textContent.value && imageList.value.length === 0) {
+    uni.showToast({
+      title: '请至少输入问题描述或上传图片',
+      icon: 'none'
+    })
+    return
+  }
+  
   // 表单验证和提交逻辑
   console.log('提交内容：', {
     location: locationInfo.value,
+    latitude: latitude.value,
+    longitude: longitude.value,
     images: imageList.value,
     content: textContent.value
+  })
+  
+  uni.showToast({
+    title: '提交成功',
+    icon: 'success'
   })
 }
 
@@ -220,6 +272,13 @@ const previewImage = (index) => {
   margin-bottom: 30rpx;
   display: flex;
   align-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.location-card:active {
+  transform: scale(0.98);
+  background-color: #f8f9fa;
 }
 
 .location-icon {
@@ -241,6 +300,12 @@ const previewImage = (index) => {
 .location-info {
   color: #666;
   font-size: 28rpx;
+}
+
+.location-action {
+  color: #999;
+  font-size: 32rpx;
+  margin-left: 20rpx;
 }
 
 /* 表单样式 */
@@ -389,9 +454,5 @@ const previewImage = (index) => {
   border-radius: 40rpx;
   font-size: 32rpx;
   font-weight: bold;
-}
-
-.submit-text {
-  display: block;
 }
 </style>
