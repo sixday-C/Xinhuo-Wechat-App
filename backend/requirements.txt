@@ -1,0 +1,17 @@
+flask==3.0.0
+flask-cors==4.0.0
+torch>=2.0.0
+torchaudio>=2.0.0
+numpy>=1.24.0
+scipy>=1.10.0
+librosa>=0.10.0
+soundfile>=0.12.0
+pydub>=0.25.1
+requests>=2.31.0
+# silero-vad
+silero
+# FunASR (可选)
+# funasr>=1.0.0
+# modelscope>=1.9.0
+# SiliconFlow API支持
+concurrent.futures
