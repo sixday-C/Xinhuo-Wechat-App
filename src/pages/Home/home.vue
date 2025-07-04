@@ -1,9 +1,10 @@
 <template>
+
 	<view class="page-container">
 		<swiper class="swiper" circular indicator-dots autoplay>
 			<swiper-item>
 				<view class="swiper-item" style="background-color: #a8d0e6;">
-					<text class="swiper-text">社区活动宣传图 1</text>
+					<text class="swiper-text">社区活动宣传图 001</text>
 				</view>
 			</swiper-item>
 			<swiper-item>

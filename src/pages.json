@@ -1,9 +1,33 @@
 {
-	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
+	"pages": [
 		{
-			"path": "pages/index/index",
+			"path": "pages/Home/home",
 			"style": {
-				"navigationBarTitleText": "uni-app"
+				"navigationBarTitleText": "办事"
+			}
+		},
+		{
+			"path": "pages/Notice/notice",
+			"style": {
+				"navigationBarTitleText": "公示栏"
+			}
+		},
+		{
+			"path": "pages/Profile/profile",
+			"style": {
+				"navigationBarTitleText": "我的"
+			}
+		},
+		{
+			"path": "pages/Home/Report/report",
+			"style": {
+				"navigationBarTitleText": "事务上报"
+			}
+		},
+		{
+			"path": "pages/Home/Appointment/appointment",
+			"style": {
+				"navigationBarTitleText": "线下预约"
 			}
 		}
 	],
@@ -12,5 +36,21 @@
 		"navigationBarTitleText": "uni-app",
 		"navigationBarBackgroundColor": "#F8F8F8",
 		"backgroundColor": "#F8F8F8"
+	},
+	"tabBar": {
+		"color": "#7A7E83",
+		"selectedColor": "#007AFF",
+		"borderStyle": "black",
+		"backgroundColor": "#FFFFFF",
+		"list": [{
+			"pagePath": "pages/Home/home",
+			"text": "办事"
+		}, {
+			"pagePath": "pages/Notice/notice",
+			"text": "公示栏"
+		}, {
+			"pagePath": "pages/Profile/profile",
+			"text": "我的"
+		}]
 	}
 }
