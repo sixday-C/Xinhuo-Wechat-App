@@ -29,6 +29,12 @@
 			"style": {
 				"navigationBarTitleText": "线下预约"
 			}
+		},
+		{
+			"path": "pages/Profile/history-detail",
+			"style": {
+				"navigationBarTitleText": "历史记录详情"
+			}
 		}
 	],
 	"globalStyle": {
@@ -42,15 +48,19 @@
 		"selectedColor": "#007AFF",
 		"borderStyle": "black",
 		"backgroundColor": "#FFFFFF",
-		"list": [{
-			"pagePath": "pages/Home/home",
-			"text": "办事"
-		}, {
-			"pagePath": "pages/Notice/notice",
-			"text": "公示栏"
-		}, {
-			"pagePath": "pages/Profile/profile",
-			"text": "我的"
-		}]
+		"list": [
+			{
+				"pagePath": "pages/Home/home",
+				"text": "办事"
+			},
+			{
+				"pagePath": "pages/Notice/notice",
+				"text": "公示栏"
+			},
+			{
+				"pagePath": "pages/Profile/profile",
+				"text": "我的"
+			}
+		]
 	}
 }

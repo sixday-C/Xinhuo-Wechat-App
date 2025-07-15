@@ -29,6 +29,12 @@
 					<view class="item-content">
 						<text class="item-title">{{ item.title }}</text>
 						<text class="item-date">{{ item.date }}</text>
+						<!-- 自定义进度条 -->
+						<view class="progress-container">
+							<view class="progress-bar">
+								<view class="progress-fill" :style="{width: item.progress + '%', backgroundColor: getProgressColor(item.status)}"></view>
+							</view>
+						</view>
 					</view>
 					<view class="item-status" :class="{'status-processed': item.status === '已处理'}">
 						{{ item.status }}
@@ -51,23 +57,27 @@
 					address: ''
 				},
 				// 历史记录的占位数据
-				historyList: [{
+				historyList: [
+					{
 						id: '1001',
 						title: '小区东门路灯不亮',
 						date: '2025-07-02',
-						status: '已处理'
+						status: '已处理',
+						progress: 100 // 已处理进度为100%
 					},
 					{
 						id: '1002',
 						title: 'B栋电梯有异响',
 						date: '2025-07-01',
-						status: '处理中'
+						status: '处理中',
+						progress: 50 // 处理中进度为50%
 					},
 					{
 						id: '1003',
 						title: '建议增加快递存放点',
 						date: '2025-06-28',
-						status: '已处理'
+						status: '已处理',
+						progress: 100 // 已处理进度为100%
 					}
 				]
 			};
@@ -89,11 +99,35 @@
 					icon: 'success'
 				});
 			},
-			// 点击历史记录项，跳转到B二级界面（详情页）
+			// 点击历史记录项，跳转到详情页
 			viewHistoryDetail(item) {
-		
-		
-		
+				const params = {
+					id: item.id,
+					title: encodeURIComponent(item.title),
+					date: item.date,
+					status: item.status,
+					progress: item.progress,
+					type: '设施维修',
+					location: '小区公共区域'
+				};
+				
+				// 构建查询字符串
+				const queryString = Object.keys(params)
+					.map(key => `${key}=${params[key]}`)
+					.join('&');
+				
+				uni.navigateTo({
+					url: `/pages/Profile/history-detail?${queryString}`
+				});
+			},
+			// 根据状态获取进度条颜色
+			getProgressColor(status) {
+				if (status === '已处理') {
+					return '#4cd964'; // 绿色，与已处理状态文字颜色一致
+				} else if (status === '处理中') {
+					return '#ff9900'; // 橙色，与处理中状态文字颜色一致
+				}
+				return '#007AFF'; // 默认蓝色
 			}
 		}
 	}
@@ -198,5 +232,27 @@
 	.item-arrow {
 		font-size: 30rpx;
 		color: #ccc;
+	}
+
+	/* 自定义进度条样式 */
+	.progress-container {
+		display: flex;
+		align-items: center;
+		margin-top: 10rpx;
+		gap: 15rpx;
+	}
+
+	.progress-bar {
+		flex: 1;
+		height: 8rpx;
+		background-color: #f0f0f0;
+		border-radius: 4rpx;
+		overflow: hidden;
+	}
+
+	.progress-fill {
+		height: 100%;
+		border-radius: 4rpx;
+		transition: width 0.3s ease;
 	}
 </style>
