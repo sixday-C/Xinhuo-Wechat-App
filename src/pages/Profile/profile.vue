@@ -103,14 +103,39 @@ export default {
         this.result = { success: false, message: e.message || '请求异常' }
       } finally {
         this.loading = false
-      }
-    },
+	}
+},
 
-    viewHistoryDetail(item) {
-      // 跳转到详情页，带上记录 ID
-      
-    }
-  }
+	viewHistoryDetail(item) {
+		const params = {
+			id: item.id,
+			title: encodeURIComponent(item.title),
+			date: item.date,
+			status: item.status,
+			progress: item.progress,
+			type: '设施维修',
+			location: '小区公共区域'
+		};
+	
+	// 构建查询字符串
+		const queryString = Object.keys(params)
+		.map(key => `${key}=${params[key]}`)
+		.join('&');
+		
+		uni.navigateTo({
+			url: `/pages/Profile/history-detail?${queryString}`
+		});
+	},
+	// 根据状态获取进度条颜色
+	getProgressColor(status) {
+		if (status === '已处理') {
+			return '#4cd964'; // 绿色，与已处理状态文字颜色一致
+		} else if (status === '处理中') {
+			return '#ff9900'; // 橙色，与处理中状态文字颜色一致
+		}
+		return '#007AFF'; // 默认蓝色
+	}
+}
 }
 </script>
 
