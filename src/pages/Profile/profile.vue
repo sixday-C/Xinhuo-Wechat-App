@@ -56,7 +56,7 @@
 export default {
   data() {
     return {
-				// 用户信息数据
+                // 用户信息数据
       userInfo: {
         phone: '',
         name: '',
@@ -67,6 +67,7 @@ export default {
       result: null,
       // 历史记录
       historyList: [
+<<<<<<< HEAD
         { 
           id: '1001', 
           title: '小区东门路灯不亮', 
@@ -88,6 +89,11 @@ export default {
           status: '已处理',
           progress: 100
         }
+=======
+        { id: '1001', title: '小区东门路灯不亮', date: '2025-07-02', status: '已处理', progress: 100 },
+        { id: '1002', title: 'B栋电梯有异响', date: '2025-07-01', status: '处理中', progress: 50 },
+        { id: '1003', title: '建议增加快递存放点', date: '2025-06-28', status: '已处理', progress: 100 }
+>>>>>>> ba073892ba034a7c7c949f1a3823c33b36c00ec5
       ]
     }
   },
@@ -105,7 +111,7 @@ export default {
       if (!phone || !name || !address) {
         return uni.showToast({ title: '请填写完整的居民信息', icon: 'none' })
       }
-	  uni.setStorageSync('userInfo', this.userInfo);
+      uni.setStorageSync('userInfo', this.userInfo);
       this.loading = true
       this.result = null
 
@@ -119,8 +125,18 @@ export default {
           address
         })
 
+<<<<<<< HEAD
         if (response.code === 200) {
           this.result = { success: true, message: '保存成功' }
+=======
+        if (response.success) {
+          // 成功
+          
+          const newId = response.data.id
+          this.result = { success: true, message: '' }
+
+          // 插入到历史列表最前面
+>>>>>>> ba073892ba034a7c7c949f1a3823c33b36c00ec5
         } else {
           this.result = { success: false, message: response.message || '保存失败' }
         }
@@ -139,12 +155,16 @@ export default {
     },
 
     viewHistoryDetail(item) {
+<<<<<<< HEAD
       // 跳转到详情页，带上记录信息
+=======
+>>>>>>> ba073892ba034a7c7c949f1a3823c33b36c00ec5
       const params = {
         id: item.id,
         title: encodeURIComponent(item.title),
         date: item.date,
         status: item.status,
+<<<<<<< HEAD
         progress: item.progress,
         type: '设施维修',
         location: '小区公共区域'
@@ -155,11 +175,26 @@ export default {
         .map(key => `${key}=${params[key]}`)
         .join('&');
       
+=======
+        progress: item.progress || 0, // 如果没有progress字段，默认为0
+        type: '设施维修',
+        location: '小区公共区域'
+      };
+    
+      // 构建查询字符串
+      const queryString = Object.keys(params)
+        .map(key => `${key}=${params[key]}`)
+        .join('&');
+      
+>>>>>>> ba073892ba034a7c7c949f1a3823c33b36c00ec5
       uni.navigateTo({
         url: `/pages/Profile/history-detail?${queryString}`
       });
     },
+<<<<<<< HEAD
 
+=======
+>>>>>>> ba073892ba034a7c7c949f1a3823c33b36c00ec5
     // 根据状态获取进度条颜色
     getProgressColor(status) {
       if (status === '已处理') {
