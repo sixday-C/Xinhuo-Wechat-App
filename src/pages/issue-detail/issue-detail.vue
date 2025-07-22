@@ -50,6 +50,21 @@
 						<text>{{ issueDetails.content }}</text>
 					</view>
 				</view>
+
+				<!-- V2 新增: 相关图片 -->
+				<view class="image-gallery" v-if="issueDetails.images && issueDetails.images.length > 0">
+					<view class="gallery-title">相关图片</view>
+					<view class="image-list">
+						<view class="image-wrapper" v-for="image in issueDetails.images" :key="image.id">
+							<image 
+								class="issue-image" 
+								:src="image.url" 
+								mode="aspectFill"
+								@click="previewImage(image.url)"
+							></image>
+						</view>
+					</view>
+				</view>
 			</view>
 		</view>
 	</view>
@@ -60,13 +75,12 @@
 		data() {
 			return {
 				issueId: null,
-				issueDetails: null, // 存储问题详情
+				issueDetails: null,
 				isLoading: true,
 				error: null,
 			};
 		},
 		onLoad(options) {
-			// onLoad生命周期函数可以获取到页面跳转时传递的参数
 			if (options.id) {
 				this.issueId = options.id;
 				this.fetchIssueDetails();
@@ -76,17 +90,15 @@
 			}
 		},
 		methods: {
-			// 获取问题详情
 			fetchIssueDetails() {
 				this.isLoading = true;
 				this.error = null;
 
-				// **注意**: 这里的URL是无效的占位符
 				uni.request({
-					url: `https://your-backend-api.com/issues/${this.issueId}`, // <--- 详情页的API URL
+					url: `https://your-backend-api.com/issues/${this.issueId}`,
 					method: 'GET',
 					success: (res) => {
-						// --- 同样，由于URL无效，我们模拟成功返回的数据 ---
+						// --- 模拟数据已更新，包含了 images 数组 ---
 						console.log(`网络请求详情成功（模拟），ID: ${this.issueId}`);
 						const allIssues = {
 							'hot001': {
@@ -94,28 +106,41 @@
 								topic: '关于小区南门车辆乱停放问题',
 								location: '南门主干道及周边',
 								mentions: 42,
-								content: '近期，大量业主反映，小区南门出入口及消防通道长期被外来车辆和部分业主车辆违规占用，严重影响了正常通行和消防安全。尤其在早晚高峰期，拥堵现象十分严重，建议物业加强管理，增设禁停标识，并对违停车辆进行处理。'
+								content: '近期，大量业主反映，小区南门出入口及消防通道长期被外来车辆和部分业主车辆违规占用，严重影响了正常通行和消防安全。尤其在早晚高峰期，拥堵现象十分严重，建议物业加强管理，增设禁停标识，并对违停车辆进行处理。',
+								images: [
+									// 使用 placehold.co 生成占位图，方便预览
+									{ id: 'img01', url: 'https://placehold.co/600x400/e2e8f0/475569?text=现场图片1' },
+									{ id: 'img02', url: 'https://placehold.co/600x400/dbeafe/1e40af?text=现场图片2' },
+									{ id: 'img03', url: 'https://placehold.co/600x400/c7d2fe/3730a3?text=现场图片3' }
+								]
 							},
 							'hot002': {
 								id: 'hot002',
 								topic: 'C栋顶楼天台防水层老化漏水',
 								location: 'C栋 15-18层',
 								mentions: 28,
-								content: 'C栋顶楼的天台防水材料已使用多年，出现明显老化、开裂迹象。每逢雨季，顶层及次顶层（18楼、17楼）住户家中均出现不同程度的渗水和墙面发霉现象，严重影响居住质量。希望能尽快安排专业人员勘察并进行维修。'
+								content: 'C栋顶楼的天台防水材料已使用多年，出现明显老化、开裂迹象。每逢雨季，顶层及次顶层（18楼、17楼）住户家中均出现不同程度的渗水和墙面发霉现象，严重影响居住质量。希望能尽快安排专业人员勘察并进行维修。',
+								images: [
+									{ id: 'img04', url: 'https://placehold.co/600x400/fecaca/991b1b?text=漏水点' }
+								]
 							},
 							'hot003': {
 								id: 'hot003',
 								topic: '傍晚时段健身器材区域噪音扰民',
 								location: '中心花园健身区',
 								mentions: 19,
-								content: '每天傍晚6点至9点，中心花园的健身器材区域聚集了大量人群，部分人员在使用器材时发出巨大声响，同时有广场舞音乐声音过大，对周边楼栋的住户造成了严重的噪音干扰，希望能够规定活动时间并控制音量。'
+								content: '每天傍晚6点至9点，中心花园的健身器材区域聚集了大量人群，部分人员在使用器材时发出巨大声响，同时有广场舞音乐声音过大，对周边楼栋的住户造成了严重的噪音干扰，希望能够规定活动时间并控制音量。',
+								images: [] // 模拟没有图片的情况
 							},
 							'hot004': {
 								id: 'hot004',
 								topic: '建议增设宠物便溺设施',
 								location: '小区所有草坪区域',
 								mentions: 15,
-								content: '随着小区内饲养宠物的家庭增多，草坪及公共区域的宠物粪便问题日益突出，影响环境卫生。建议在几个主要绿地区域增设宠物厕所或提供免费的拾便袋，并加强宣传，引导宠物主人文明养宠。'
+								content: '随着小区内饲养宠物的家庭增多，草坪及公共区域的宠物粪便问题日益突出，影响环境卫生。建议在几个主要绿地区域增设宠物厕所或提供免费的拾便袋，并加强宣传，引导宠物主人文明养宠。',
+								images: [
+									{ id: 'img05', url: 'https://placehold.co/600x400/d9f99d/3f6212?text=草坪现状' }
+								]
 							}
 						};
 						
@@ -123,7 +148,6 @@
 						if (!this.issueDetails) {
 							this.error = "未找到该问题的详细信息。";
 						}
-						// --- 模拟数据结束 ---
 					},
 					fail: (err) => {
 						console.error("详情API请求失败:", err);
@@ -134,7 +158,16 @@
 					}
 				});
 			},
-			// 返回上一页
+			
+			// V2 新增: 点击图片预览
+			previewImage(currentUrl) {
+				const urls = this.issueDetails.images.map(img => img.url);
+				uni.previewImage({
+					current: currentUrl, // 当前显示图片的http链接
+					urls: urls // 需要预览的图片http链接列表
+				});
+			},
+
 			goBack() {
 				uni.navigateBack();
 			}
@@ -155,8 +188,8 @@
 		top: 0;
 		left: 0;
 		right: 0;
-		height: 88rpx; /* 自定义导航栏高度 */
-		padding-top: var(--status-bar-height); /* 适配微信小程序状态栏 */
+		height: 88rpx;
+		padding-top: var(--status-bar-height);
 		background-color: #ffffff;
 		display: flex;
 		align-items: center;
@@ -194,7 +227,6 @@
 	}
 	
 	.content-container {
-		padding-top: calc(88rpx + var(--status-bar-height)); /* 预留出导航栏空间 */
 		padding: 20rpx;
 		padding-top: calc(88rpx + var(--status-bar-height) + 20rpx);
 	}
@@ -240,7 +272,6 @@
 	
 	.info-section {
 		padding: 25rpx 0;
-		border-bottom: 1px solid #f0f0f0;
 	}
 	
 	.info-line {
@@ -268,7 +299,8 @@
 	}
 	
 	.content-section {
-		padding-top: 25rpx;
+		padding: 25rpx 0;
+		border-top: 1px solid #f0f0f0;
 	}
 	
 	.content-title {
@@ -283,6 +315,38 @@
 		color: #555;
 		line-height: 1.8;
 		text-align: justify;
+	}
+	
+	/* V2 新增: 图片画廊样式 */
+	.image-gallery {
+		padding-top: 25rpx;
+		margin-top: 25rpx;
+		border-top: 1px solid #f0f0f0;
+	}
+	
+	.gallery-title {
+		font-size: 32rpx;
+		font-weight: bold;
+		color: #333;
+		margin-bottom: 20rpx;
+	}
+	
+	.image-list {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 15rpx; /* 图片之间的间距 */
+	}
+	
+	.image-wrapper {
+		width: calc(33.333% - 10rpx); /* 每行三张图，减去gap的影响 */
+		aspect-ratio: 1 / 1; /* 保持图片为正方形 */
+	}
+	
+	.issue-image {
+		width: 100%;
+		height: 100%;
+		border-radius: 8rpx;
+		background-color: #f0f0f0;
 	}
 
 </style>
