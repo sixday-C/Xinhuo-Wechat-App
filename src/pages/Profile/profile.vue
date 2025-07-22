@@ -28,12 +28,18 @@
       <view class="section-title">历史记录</view>
       <view class="history-list">
         <view v-if="historyList.length === 0" class="empty-history">
-          <text>暂无上报记录</text>
+          <text>暂无历史记录</text>
         </view>
-				<view class="history-item" v-for="item in historyList" :key="item.id" @click="viewHistoryDetail(item)">
+        <view class="history-item" v-for="item in historyList" :key="item.id" @click="viewHistoryDetail(item)">
           <view class="item-content">
             <text class="item-title">{{ item.title }}</text>
             <text class="item-date">{{ item.date }}</text>
+            <!-- 自定义进度条 -->
+            <view class="progress-container">
+              <view class="progress-bar">
+                <view class="progress-fill" :style="{width: item.progress + '%', backgroundColor: getProgressColor(item.status)}"></view>
+              </view>
+            </view>
           </view>
           <view class="item-status" :class="{'status-processed': item.status === '已处理'}">
             {{ item.status }}
@@ -61,10 +67,35 @@ export default {
       result: null,
       // 历史记录
       historyList: [
-        { id: '1001', title: '小区东门路灯不亮', date: '2025-07-02', status: '已处理' },
-        { id: '1002', title: 'B栋电梯有异响', date: '2025-07-01', status: '处理中' },
-        { id: '1003', title: '建议增加快递存放点', date: '2025-06-28', status: '已处理' }
+        { 
+          id: '1001', 
+          title: '小区东门路灯不亮', 
+          date: '2025-07-02', 
+          status: '已处理',
+          progress: 100
+        },
+        { 
+          id: '1002', 
+          title: 'B栋电梯有异响', 
+          date: '2025-07-01', 
+          status: '处理中',
+          progress: 50
+        },
+        { 
+          id: '1003', 
+          title: '建议增加快递存放点', 
+          date: '2025-06-28', 
+          status: '已处理',
+          progress: 100
+        }
       ]
+    }
+  },
+  onLoad() {
+    // 页面加载时读取存储的用户信息
+    const storedUserInfo = uni.getStorageSync('userInfo');
+    if (storedUserInfo) {
+      this.userInfo = storedUserInfo;
     }
   },
   methods: {
@@ -78,7 +109,8 @@ export default {
       this.loading = true
       this.result = null
 
-      // 调用云对象
+      // 模拟保存操作（如果需要云函数调用，可以取消下面的注释）
+      /*
       const addUser = uniCloud.importObject('add-user-demo-1')
       try {
         const response = await addUser.addUser({
@@ -87,28 +119,55 @@ export default {
           address
         })
 
-        if (response.success) {
-          // 成功
-		  
-          const newId = response.data.id
-          this.result = { success: true, message: '' }
-
-          // 插入到历史列表最前面
+        if (response.code === 200) {
+          this.result = { success: true, message: '保存成功' }
         } else {
-          // 云函数返回失败
-          this.result = { success: false, message: response.error || '' }
+          this.result = { success: false, message: response.message || '保存失败' }
         }
       } catch (e) {
-        // 调用出错
         this.result = { success: false, message: e.message || '请求异常' }
       } finally {
         this.loading = false
       }
+      */
+
+      // 临时本地模拟保存
+      setTimeout(() => {
+        this.result = { success: true, message: '保存成功' }
+        this.loading = false
+      }, 800)
     },
 
     viewHistoryDetail(item) {
-      // 跳转到详情页，带上记录 ID
+      // 跳转到详情页，带上记录信息
+      const params = {
+        id: item.id,
+        title: encodeURIComponent(item.title),
+        date: item.date,
+        status: item.status,
+        progress: item.progress,
+        type: '设施维修',
+        location: '小区公共区域'
+      };
       
+      // 构建查询字符串
+      const queryString = Object.keys(params)
+        .map(key => `${key}=${params[key]}`)
+        .join('&');
+      
+      uni.navigateTo({
+        url: `/pages/Profile/history-detail?${queryString}`
+      });
+    },
+
+    // 根据状态获取进度条颜色
+    getProgressColor(status) {
+      if (status === '已处理') {
+        return '#4cd964'; // 绿色，与已处理状态文字颜色一致
+      } else if (status === '处理中') {
+        return '#ff9900'; // 橙色，与处理中状态文字颜色一致
+      }
+      return '#007AFF'; // 默认蓝色
     }
   }
 }
@@ -235,5 +294,19 @@ export default {
 		height: 100%;
 		border-radius: 4rpx;
 		transition: width 0.3s ease;
+	}
+
+	/* 结果显示样式 */
+	.result {
+		margin-top: 20rpx;
+		text-align: center;
+	}
+
+	.result .success {
+		color: #4cd964;
+	}
+
+	.result .error {
+		color: #ff3333;
 	}
 </style>
