@@ -1,0 +1,66 @@
+// 文档教程: https://uniapp.dcloud.net.cn/uniCloud/schema
+{
+	"bsonType": "object",
+	"required": ["name"],
+	"permission": {
+		"read": true,
+		"create": true,
+		"update": true,
+		"delete": false
+	},
+	"properties": {
+		"_id": {
+			"description": "ID，系统自动生成"
+		},
+		"name":{
+			"title": "姓名",
+			"label": "名字",
+			"description": "请输入姓名",
+			"bsonType": "string",
+			"minLength": 4,
+			"maxLength": 18,
+			"errorMessage": {
+			        "required": "{label}必填",
+			        "minLength": "{title}不能小于{minLength}个字符",
+			        "maxLength": "{label}不能大于{maxLength}个字符"
+			      }
+		},
+		"age":{
+			"title": "年龄",
+			"description": "请输入年龄",
+			"bsonType": "int"
+		},
+		
+		"gender":{
+			"title": "性别",
+			"bsonType": "int",
+			"enum":[{
+				"text":"未知",
+				"value":0
+			},
+			{
+				"text":"男",
+				"value":1
+			},{
+				"text":"女",
+				"value":2
+			}
+			],
+			"defaultValue":0
+		},
+		"createTime":{
+			"title":"时间函数",
+			"bsonType": "timestamp"
+		},
+		
+		"IP":{
+			"title":"IP",
+			"bsonType": "string",
+			"forceDefaultValue":{
+				"$env": "clientIP"
+			}
+		}
+		
+		
+	}
+}

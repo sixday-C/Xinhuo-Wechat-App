@@ -14,8 +14,12 @@ exports.main = async (event, context) => {
             };
         }
         
+        // 获取用户ID（从微信小程序获取openid或自定义userid）
+        const userid = context.CLIENTUA || event.userid || context.OPENID;
+        
         // 构建要插入的数据
         const reportData = {
+            userid: userid,  // 添加用户ID
             description: event.description.trim(),
             isAnonymous: Boolean(event.isAnonymous),
             imageUrls: event.imageUrls || [],
@@ -24,13 +28,13 @@ exports.main = async (event, context) => {
             userAddress: event.userAddress || '',
             locationInfo: event.locationInfo || null,
             reportTime: event.reportTime || new Date().toISOString(),
-            status: '待处理', // 默认状态
+            status: '待处理',
             createTime: new Date(),
             updateTime: new Date()
         };
         
         // 插入数据到数据库
-        const result = await db.collection('problem_reports').add(reportData);
+        const result = await db.collection('ALL_Report').add(reportData);
         
         console.log('问题上报插入成功：', result);
         
