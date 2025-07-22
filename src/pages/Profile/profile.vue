@@ -50,7 +50,7 @@
 export default {
   data() {
     return {
-				// 用户信息数据
+                // 用户信息数据
       userInfo: {
         phone: '',
         name: '',
@@ -61,9 +61,9 @@ export default {
       result: null,
       // 历史记录
       historyList: [
-        { id: '1001', title: '小区东门路灯不亮', date: '2025-07-02', status: '已处理' },
-        { id: '1002', title: 'B栋电梯有异响', date: '2025-07-01', status: '处理中' },
-        { id: '1003', title: '建议增加快递存放点', date: '2025-06-28', status: '已处理' }
+        { id: '1001', title: '小区东门路灯不亮', date: '2025-07-02', status: '已处理', progress: 100 },
+        { id: '1002', title: 'B栋电梯有异响', date: '2025-07-01', status: '处理中', progress: 60 },
+        { id: '1003', title: '建议增加快递存放点', date: '2025-06-28', status: '已处理', progress: 100 }
       ]
     }
   },
@@ -74,7 +74,7 @@ export default {
       if (!phone || !name || !address) {
         return uni.showToast({ title: '请填写完整的居民信息', icon: 'none' })
       }
-	  uni.setStorageSync('userInfo', this.userInfo);
+      uni.setStorageSync('userInfo', this.userInfo);
       this.loading = true
       this.result = null
 
@@ -89,7 +89,7 @@ export default {
 
         if (response.success) {
           // 成功
-		  
+          
           const newId = response.data.id
           this.result = { success: true, message: '' }
 
@@ -103,39 +103,39 @@ export default {
         this.result = { success: false, message: e.message || '请求异常' }
       } finally {
         this.loading = false
-	}
-},
+      }
+    },
 
-	viewHistoryDetail(item) {
-		const params = {
-			id: item.id,
-			title: encodeURIComponent(item.title),
-			date: item.date,
-			status: item.status,
-			progress: item.progress,
-			type: '设施维修',
-			location: '小区公共区域'
-		};
-	
-	// 构建查询字符串
-		const queryString = Object.keys(params)
-		.map(key => `${key}=${params[key]}`)
-		.join('&');
-		
-		uni.navigateTo({
-			url: `/pages/Profile/history-detail?${queryString}`
-		});
-	},
-	// 根据状态获取进度条颜色
-	getProgressColor(status) {
-		if (status === '已处理') {
-			return '#4cd964'; // 绿色，与已处理状态文字颜色一致
-		} else if (status === '处理中') {
-			return '#ff9900'; // 橙色，与处理中状态文字颜色一致
-		}
-		return '#007AFF'; // 默认蓝色
-	}
-}
+    viewHistoryDetail(item) {
+      const params = {
+        id: item.id,
+        title: encodeURIComponent(item.title),
+        date: item.date,
+        status: item.status,
+        progress: item.progress || 0, // 如果没有progress字段，默认为0
+        type: '设施维修',
+        location: '小区公共区域'
+      };
+    
+      // 构建查询字符串
+      const queryString = Object.keys(params)
+        .map(key => `${key}=${params[key]}`)
+        .join('&');
+      
+      uni.navigateTo({
+        url: `/pages/Profile/history-detail?${queryString}`
+      });
+    },
+    // 根据状态获取进度条颜色
+    getProgressColor(status) {
+      if (status === '已处理') {
+        return '#4cd964'; // 绿色，与已处理状态文字颜色一致
+      } else if (status === '处理中') {
+        return '#ff9900'; // 橙色，与处理中状态文字颜色一致
+      }
+      return '#007AFF'; // 默认蓝色
+    }
+  }
 }
 </script>
 
