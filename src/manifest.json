@@ -1,6 +1,6 @@
 {
-    "name" : "",
-    "appid" : "",
+    "name" : "XinHuo",
+    "appid" : "__UNI__977066E",
     "description" : "",
     "versionName" : "1.0.0",
     "versionCode" : "100",
@@ -65,8 +65,8 @@
     "mp-toutiao" : {
         "usingComponents" : true
     },
-    "uniStatistics": {  
-        "enable": false
+    "uniStatistics" : {
+        "enable" : false
     },
     "vueVersion" : "3"
 }
