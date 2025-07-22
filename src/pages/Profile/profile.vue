@@ -62,7 +62,7 @@ export default {
       // 历史记录
       historyList: [
         { id: '1001', title: '小区东门路灯不亮', date: '2025-07-02', status: '已处理', progress: 100 },
-        { id: '1002', title: 'B栋电梯有异响', date: '2025-07-01', status: '处理中', progress: 60 },
+        { id: '1002', title: 'B栋电梯有异响', date: '2025-07-01', status: '处理中', progress: 50 },
         { id: '1003', title: '建议增加快递存放点', date: '2025-06-28', status: '已处理', progress: 100 }
       ]
     }
