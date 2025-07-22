@@ -438,18 +438,99 @@
                 uni.showModal({
                     title: '提交内容确认',
                     content: `问题描述: ${this.description}\n匿名状态: ${this.isAnonymous ? '是' : '否'}\n图片数量: ${this.imageList.length}张`,
-                    success: (res) => {
+                    success: async (res) => {
                         if (res.confirm) {
                             console.log('用户点击确定');
-                            uni.showLoading({ title: '正在提交...'})
-                            setTimeout(() => {
-                                uni.hideLoading();
-                                uni.showToast({ title: '提交成功' });
-                                uni.navigateBack();
-                            }, 1500);
+                            await this.submitReport();
                         }
                     }
                 });
+            },
+
+            // 新增提交问题上报的方法
+            async submitReport() {
+                try {
+                    uni.showLoading({ title: '正在提交...' });
+                    
+                    // 获取用户信息
+                    const userInfo = uni.getStorageSync('userInfo') || {};
+                    
+                    // 上传图片到云存储
+                    const imageUrls = await this.uploadImages();
+                    
+                    // 调用云函数提交问题上报
+                    const response = await uniCloud.callFunction({
+                        name: 'add-report-demo',
+                        data: {
+                            description: this.description,
+                            isAnonymous: this.isAnonymous,
+                            imageUrls: imageUrls,
+                            userPhone: this.isAnonymous ? '' : userInfo.phone,
+                            userName: this.isAnonymous ? '' : userInfo.name,
+                            userAddress: this.isAnonymous ? '' : userInfo.address,
+                            locationInfo: this.locationPermissionGranted ? this.currentLocationInfo : null,
+                            reportTime: new Date().toISOString()
+                        }
+                    });
+                    
+                    uni.hideLoading();
+                    
+                    if (response.result.success) {
+                        uni.showToast({ 
+                            title: '提交成功', 
+                            icon: 'success' 
+                        });
+                        // 清空表单
+                        this.description = '';
+                        this.imageList = [];
+                        this.isAnonymous = false;
+                        // 返回上一页
+                        setTimeout(() => {
+                            uni.navigateBack();
+                        }, 1500);
+                    } else {
+                        uni.showToast({ 
+                            title: response.result.error || '提交失败', 
+                            icon: 'none' 
+                        });
+                    }
+                } catch (error) {
+                    uni.hideLoading();
+                    console.error('提交失败：', error);
+                    uni.showToast({ 
+                        title: error.message || '提交失败，请重试', 
+                        icon: 'none' 
+                    });
+                }
+            },
+
+            // 新增上传图片到云存储的方法
+            async uploadImages() {
+                if (this.imageList.length === 0) {
+                    return [];
+                }
+                
+                const uploadPromises = this.imageList.map(async (imagePath, index) => {
+                    try {
+                        const result = await uniCloud.uploadFile({
+                            filePath: imagePath,
+                            cloudPath: `report-images/${Date.now()}-${index}.jpg`,
+                            cloudPathAsRealPath: true
+                        });
+                        return result.fileID;
+                    } catch (error) {
+                        console.error(`图片${index + 1}上传失败：`, error);
+                        throw new Error(`图片${index + 1}上传失败`);
+                    }
+                });
+                
+                try {
+                    const imageUrls = await Promise.all(uploadPromises);
+                    console.log('所有图片上传成功：', imageUrls);
+                    return imageUrls;
+                } catch (error) {
+                    throw new Error('图片上传失败，请重试');
+                }
             }
         },
         
