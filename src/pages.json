@@ -13,6 +13,13 @@
 			}
 		},
 		{
+			"path": "pages/issue-detail/issue-detail",
+			"style": {
+				"navigationStyle": "custom", 
+				"navigationBarTitleText": ""
+			}
+		},
+		{
 			"path": "pages/Profile/profile",
 			"style": {
 				"navigationBarTitleText": "我的"
