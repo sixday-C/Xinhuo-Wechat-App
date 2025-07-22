@@ -451,27 +451,36 @@
             async submitReport() {
                 try {
                     uni.showLoading({ title: '正在提交...' });
-                    
+        
                     // 获取用户信息
                     const userInfo = uni.getStorageSync('userInfo') || {};
-                    
-                    // 上传图片到云存储
-                    const imageUrls = await this.uploadImages();
-                    
-                    // 调用云函数提交问题上报
-                    const response = await uniCloud.callFunction({
-                        name: 'add-report-demo',
-                        data: {
-                            description: this.description,
-                            isAnonymous: this.isAnonymous,
-                            imageUrls: imageUrls,
-                            userPhone: this.isAnonymous ? '' : userInfo.phone,
-                            userName: this.isAnonymous ? '' : userInfo.name,
-                            userAddress: this.isAnonymous ? '' : userInfo.address,
-                            locationInfo: this.locationPermissionGranted ? this.currentLocationInfo : null,
-                            reportTime: new Date().toISOString()
-                        }
-                    });
+        
+                    // 获取当前用户ID（可以是openid或其他唯一标识）
+                    let userid = uni.getStorageSync('userid');
+                    if (!userid) {
+                    // 如果没有userid，可以生成一个或使用openid
+                    userid = userInfo.openid || `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                    uni.setStorageSync('userid', userid);
+                }
+        
+                // 上传图片到云存储
+                const imageUrls = await this.uploadImages();
+        
+                // 调用云函数提交问题上报
+                const response = await uniCloud.callFunction({
+                    name: 'add-report-demo',
+                    data: {
+                        userid: userid,  // 添加用户ID
+                        description: this.description,
+                        isAnonymous: this.isAnonymous,
+                        imageUrls: imageUrls,
+                        userPhone: this.isAnonymous ? '' : userInfo.phone,
+                        userName: this.isAnonymous ? '' : userInfo.name,
+                        userAddress: this.isAnonymous ? '' : userInfo.address,
+                        locationInfo: this.locationPermissionGranted ? this.currentLocationInfo : null,
+                        reportTime: new Date().toISOString()
+                    }
+                });
                     
                     uni.hideLoading();
                     
