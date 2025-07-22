@@ -4,6 +4,24 @@
 			<view class="title">热门公示</view>
 			<view class="subtitle">社区高频及重点问题关注</view>
 		</view>
+
+		<!-- 新增排序选项 -->
+		<view class="sort-container">
+			<view
+				class="sort-option"
+				:class="{ 'active': sortBy === 'hot' }"
+				@click="changeSort('hot')"
+			>
+				按热度
+			</view>
+			<view
+				class="sort-option"
+				:class="{ 'active': sortBy === 'time' }"
+				@click="changeSort('time')"
+			>
+				按时间
+			</view>
+		</view>
 		
 		<view class="issue-list">
 			<!-- 加载中提示 -->
@@ -49,14 +67,14 @@
 	export default {
 		data() {
 			return {
-				hotIssues: [],
+				hotIssues: [], // 用于显示的、已排序的列表
+				allIssues: [], // 从后端获取的原始列表
 				isLoading: true,
 				error: null,
-				communityId: "687f52b3367dc042238a07ad" 
+				communityId: "687f52b3367dc042238a07ad",
+				sortBy: 'hot' // 默认按热度排序
 			};
 		},
-		// FIX: 将 onLoad 修改为 onShow
-		// onShow 会在每次页面显示时都触发，保证数据实时更新
 		onShow() {
 			this.fetchHotIssues();
 		},
@@ -76,7 +94,8 @@
 						throw new Error(res.msg || '获取数据失败');
 					}
 					
-					this.hotIssues = res.data.list;
+					this.allIssues = res.data.list; // 存储原始数据
+					this.sortIssues(); // 进行初次排序
 					
 				} catch (e) {
 					console.error("fetchHotIssues error:", e);
@@ -84,6 +103,42 @@
 				} finally {
 					this.isLoading = false;
 				}
+			},
+
+			// 切换排序方式
+			changeSort(type) {
+				if (this.sortBy === type) return; // 如果已经是当前排序方式，则不执行任何操作
+				this.sortBy = type;
+				this.sortIssues();
+			},
+
+			// 执行排序
+			sortIssues() {
+				// 从原始列表中创建一个可变副本进行排序
+				let sorted = [...this.allIssues];
+
+				if (this.sortBy === 'hot') {
+					// 按热度排序
+					sorted.sort((a, b) => {
+						// 首先按查看次数降序
+						if ((b.view_count || 0) !== (a.view_count || 0)) {
+							return (b.view_count || 0) - (a.view_count || 0);
+						}
+						// 次数相同，按时间降序
+						return (b.publish_time || 0) - (a.publish_time || 0);
+					});
+				} else if (this.sortBy === 'time') {
+					// 按时间排序
+					sorted.sort((a, b) => {
+						// 按发布时间降序
+						// 将没有时间的排在最后
+						if (!a.publish_time) return 1;
+						if (!b.publish_time) return -1;
+						return b.publish_time - a.publish_time;
+					});
+				}
+
+				this.hotIssues = sorted;
 			},
 			
 			viewIssueDetails(issueId) {
@@ -124,6 +179,31 @@
 		color: #999;
 		margin-top: 10rpx;
 	}
+	
+	/* 新增排序容器样式 */
+	.sort-container {
+		position: sticky;
+		top: 0;
+		display: flex;
+		gap: 40rpx;
+		padding: 20rpx 30rpx;
+		background-color: #f4f4f4;
+		z-index: 10;
+		border-bottom: 1px solid #e5e5e5;
+	}
+
+	.sort-option {
+		font-size: 28rpx;
+		color: #666;
+		font-weight: normal;
+		transition: color 0.2s, font-weight 0.2s;
+	}
+
+	.sort-option.active {
+		color: #333;
+		font-weight: bold;
+	}
+
 	.issue-list {
 		padding: 20rpx;
 	}
