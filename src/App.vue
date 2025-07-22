@@ -1,6 +1,8 @@
 <script>
+
 export default {
   onLaunch: function () {
+    
     console.log('App Launch')
   },
   onShow: function () {
@@ -10,6 +12,7 @@ export default {
     console.log('App Hide')
   },
 }
+
 </script>
 
 <style>
