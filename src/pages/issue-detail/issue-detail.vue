@@ -26,17 +26,14 @@
 				<!-- 标题 -->
 				<view class="detail-header">
 					<text class="header-icon">#</text>
-					<!-- 后端字段: title -->
 					<text class="header-title">{{ issueDetails.title }}</text>
 				</view>
 
 				<!-- 基本信息 -->
 				<view class="info-section">
-					<!-- 备注: 后端未提供'location'字段，此处暂时隐藏 -->
 					<view class="info-line">
 						<text class="info-icon">🔥</text>
 						<text class="info-label">查看次数：</text>
-						<!-- 后端字段: view_count -->
 						<text class="info-value">{{ issueDetails.view_count || 0 }} 次</text>
 					</view>
 				</view>
@@ -45,7 +42,6 @@
 				<view class="content-section">
 					<view class="content-title">详细情况</view>
 					<view class="content-body">
-						<!-- 后端字段: content -->
 						<text>{{ issueDetails.content }}</text>
 					</view>
 				</view>
@@ -54,7 +50,6 @@
 				<view class="image-gallery" v-if="issueDetails.images && issueDetails.images.length > 0">
 					<view class="gallery-title">相关图片</view>
 					<view class="image-list">
-						<!-- 后端字段: images (假设是包含url的对象数组) -->
 						<view class="image-wrapper" v-for="(image, index) in issueDetails.images" :key="index">
 							<image 
 								class="issue-image" 
@@ -71,7 +66,6 @@
 </template>
 
 <script>
-	// 1. 导入云对象
 	const noticeDemo = uniCloud.importObject("notice-demo");
 
 	export default {
@@ -93,36 +87,57 @@
 			}
 		},
 		methods: {
-			// 从 uniCloud 获取问题详情
+			// FIX: fetchIssueDetails 方法已更新，增加了防刷逻辑
 			async fetchIssueDetails() {
 				this.isLoading = true;
 				this.error = null;
 
 				try {
-					// 2. 调用云对象的 getNoticeDetail 方法
+					// --- 防刷逻辑开始 ---
+					const now = Date.now();
+					const fiveMinutes = 5 * 60 * 1000;
+					
+					// 1. 获取本地存储的查看记录
+					const timestamps = uni.getStorageSync('notice_view_timestamps') || {};
+					const lastViewTime = timestamps[this.issueId];
+
+					let shouldIncrement = true; // 默认需要增加查看次数
+
+					if (lastViewTime && (now - lastViewTime < fiveMinutes)) {
+						// 5分钟内已查看过，不增加查看次数
+						shouldIncrement = false;
+						console.log(`公告 ${this.issueId} 在5分钟内已被查看，本次不增加浏览量。`);
+					}
+					// --- 防刷逻辑结束 ---
+
+					// 2. 调用云对象，并传入 increment 参数
 					const res = await noticeDemo.getNoticeDetail({
-						id: this.issueId
+						id: this.issueId,
+						increment: shouldIncrement
 					});
 
 					if (res.code !== 0) {
 						throw new Error(res.msg || '获取详情失败');
 					}
 					
-					// 3. 将返回的数据赋值给页面变量
+					// 3. 如果成功增加了查看次数，则更新本地时间戳
+					if (shouldIncrement) {
+						timestamps[this.issueId] = now;
+						uni.setStorageSync('notice_view_timestamps', timestamps);
+						console.log(`公告 ${this.issueId} 浏览量+1，并记录时间戳。`);
+					}
+					
 					this.issueDetails = res.data;
 
 				} catch (e) {
 					console.error("fetchIssueDetails error:", e);
 					this.error = e.message || "详情加载失败，请稍后重试。";
 				} finally {
-					// 4. 请求完成，关闭加载状态
 					this.isLoading = false;
 				}
 			},
 			
-			// 点击图片预览
 			previewImage(currentUrl) {
-				// 兼容后端 images 数组是 [url1, url2] 或 [{url: url1}, {url: url2}] 的情况
 				const urls = this.issueDetails.images.map(img => (typeof img === 'object' ? img.url : img));
 				uni.previewImage({
 					current: currentUrl,
@@ -138,7 +153,7 @@
 </script>
 
 <style>
-	/* 样式与之前保持一致，此处省略以节省篇幅 */
+	/* 样式与之前保持一致 */
 	.detail-page {
 		background-color: #f4f4f4;
 		min-height: 100vh;

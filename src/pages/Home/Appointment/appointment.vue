@@ -1,137 +1,172 @@
 <template>
-	<view class="page-container">
-		<view class="schedule-layout">
-			<scroll-view class="date-sidebar" scroll-y>
-				<view
-					v-for="(day, index) in schedule"
-					:key="day.date"
-					class="date-item"
-					:class="{ 'active': activeDateIndex === index }"
-					@click="selectDate(index)"
-				>
-					<view class="day-name">{{ day.dayName }}</view>
-					<view class="date-number">{{ day.dateShort }}</view>
-				</view>
-			</scroll-view>
-			
-			<scroll-view class="time-slots-main" scroll-y>
-				<view class="slot-header">
-					请选择预约时段
-					<view class="selected-date-display">{{ schedule[activeDateIndex]?.fullDate || '' }}</view>
-				</view>
-				<view class="slots-grid">
-					<view
-						v-for="slot in availableSlots"
-						:key="slot.id"
-						class="slot-item"
-						:class="{ 
-							'full': slot.status === 'full',
-							'selected': selectedSlotId === slot.id
-						}"
-						@click="selectSlot(slot)"
-					>
-						{{ slot.time }}
-						<view class="slot-status">{{ slot.status === 'full' ? '已约满' : '可预约' }}</view>
-					</view>
-				</view>
-				<view v-if="availableSlots.length === 0" class="no-slots">
-					当日无可用时段
-				</view>
-			</scroll-view>
-		</view>
-		
-		<view class="footer">
-			<button class="confirm-btn" :disabled="!selectedSlotId" @click="confirmBooking">确认预约</button>
-		</view>
-	</view>
+  <view class="page-container">
+    <view class="schedule-layout">
+      <!-- 日期侧边栏 -->
+      <scroll-view class="date-sidebar" scroll-y>
+        <view
+          v-for="(day, index) in schedule"
+          :key="day.date"
+          class="date-item"
+          :class="{ active: activeDateIndex === index }"
+          @click="selectDate(index)"
+        >
+          <view class="day-name">{{ day.dayName }}</view>
+          <view class="date-number">{{ day.dateShort }}</view>
+        </view>
+      </scroll-view>
+
+      <!-- 时段主区域 -->
+      <scroll-view class="time-slots-main" scroll-y>
+        <view class="slot-header">
+          请选择预约时段
+          <view class="selected-date-display">
+            {{ schedule[activeDateIndex]?.fullDate || '' }}
+          </view>
+        </view>
+        <view class="slots-grid">
+          <view
+            v-for="slot in availableSlots"
+            :key="slot.id"
+            class="slot-item"
+            :class="{
+              full: isFull(slot),
+              selected: selectedSlotId === slot.id
+            }"
+            @click="handleSlotClick(slot)"
+          >
+            <text class="slot-time">{{ slot.time }}</text>
+            <view class="slot-status">
+              <!-- 已满显示已约满，否则显示剩余名额 -->
+              {{ isFull(slot) ? '已约满' : `剩余 ${5 - getCount(slot)} 位` }}
+            </view>
+          </view>
+        </view>
+        <view v-if="availableSlots.length === 0" class="no-slots">
+          当日无可用时段
+        </view>
+      </scroll-view>
+    </view>
+
+    <!-- 底部按钮 -->
+    <view class="footer">
+      <button
+        class="confirm-btn"
+        :disabled="!selectedSlotId"
+        @click="confirmBooking"
+      >
+        确认预约
+      </button>
+    </view>
+  </view>
 </template>
 
 <script>
-	export default {
-		data() {
-			return {
-				schedule: [], // 存储所有排班的数组
-				activeDateIndex: 0, // 当前选中的日期索引
-				selectedSlotId: null, // 当前选中的时段ID
-			};
-		},
-		computed: {
-			// 计算属性：根据选中的日期，返回对应的可用时段列表
-			availableSlots() {
-				if (this.schedule.length > 0) {
-					return this.schedule[this.activeDateIndex].slots;
-				}
-				return [];
-			}
-		},
-		onLoad() {
-			// 页面加载时，生成并加载模拟的排班数据
-			this.generateScheduleData();
-		},
-		methods: {
-			// 生成未来7天的模拟排班数据
-			generateScheduleData() {
-				let scheduleData = [];
-				const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-				const dayNames = ['今天', '明天', '后天'];
-				
-				for (let i = 0; i < 7; i++) {
-					const date = new Date();
-					date.setDate(date.getDate() + i);
-					
-					let dayName = dayNames[i] || weekDays[date.getDay()];
-					
-					scheduleData.push({
-						dayName: dayName,
-						dateShort: `${date.getMonth() + 1}/${date.getDate()}`,
-						fullDate: `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`,
-						// 模拟不同日期的不同时段和状态
-						slots: [
-							{ id: `${i}-1`, time: '09:00-10:00', status: Math.random() > 0.3 ? 'available' : 'full' },
-							{ id: `${i}-2`, time: '10:00-11:00', status: Math.random() > 0.5 ? 'available' : 'full' },
-							{ id: `${i}-3`, time: '14:00-15:00', status: i % 2 === 0 ? 'available' : 'full' }, // 偶数日此时间段开放
-							{ id: `${i}-4`, time: '15:00-16:00', status: 'available' },
-						]
-					});
-				}
-				this.schedule = scheduleData;
-			},
-			// 点击左侧日期项
-			selectDate(index) {
-				this.activeDateIndex = index;
-				this.selectedSlotId = null; // 切换日期时，重置已选时段
-			},
-			// 点击右侧时段项
-			selectSlot(slot) {
-				if (slot.status === 'full') {
-					uni.showToast({
-						title: '该时段已约满',
-						icon: 'none'
-					});
-					return;
-				}
-				this.selectedSlotId = slot.id;
-			},
-			// 点击确认预约按钮
-			confirmBooking() {
-				const selectedDate = this.schedule[this.activeDateIndex];
-				const selectedSlot = this.availableSlots.find(s => s.id === this.selectedSlotId);
-				
-				uni.showModal({
-					title: '确认预约信息',
-					content: `您选择的预约时间为：\n${selectedDate.fullDate} ${selectedSlot.time}`,
-					success: (res) => {
-						if (res.confirm) {
-							console.log('用户点击了确认');
-							// 在这里执行提交预约到服务器的逻辑
-							uni.showToast({ title: '预约成功！', icon: 'success' });
-						}
-					}
-				});
-			}
-		}
-	}
+const bookingAPI = uniCloud.importObject('addBooking')
+const getSlotCountsAPI = uniCloud.importObject('getSlotCounts')
+
+export default {
+  data() {
+    return {
+      schedule: [],
+      activeDateIndex: 0,
+      selectedSlotId: null,
+      userInfo: { name: '', phone: '', address: '' },
+      slotCounts: {}
+    }
+  },
+  async onLoad() {
+    this.generateScheduleData()
+    this.loadUserInfo()
+    await this.fetchSlotCounts()
+  },
+  computed: {
+    availableSlots() {
+      return this.schedule[this.activeDateIndex]?.slots || []
+    }
+  },
+  methods: {
+    loadUserInfo() {
+      const info = uni.getStorageSync('userInfo') || {}
+      this.userInfo = { name: info.name || '', phone: info.phone || '', address: info.address || '' }
+    },
+    generateScheduleData() {
+      const weekDays = ['周日','周一','周二','周三','周四','周五','周六']
+      const dayNames = ['今天','明天','后天']
+      const data = []
+      for (let i = 0; i < 7; i++) {
+        const d = new Date()
+        d.setDate(d.getDate() + i)
+        const dayName = dayNames[i] || weekDays[d.getDay()]
+        data.push({
+          dayName,
+          dateShort: `${d.getMonth()+1}/${d.getDate()}`,
+          fullDate: `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`,
+          slots: [
+            { id: `${i}-1`, time: '09:00-10:00' },
+            { id: `${i}-2`, time: '10:00-11:00' },
+            { id: `${i}-3`, time: '14:00-15:00' },
+            { id: `${i}-4`, time: '15:00-16:00' }
+          ]
+        })
+      }
+      this.schedule = data
+    },
+    selectDate(index) {
+      this.activeDateIndex = index
+      this.selectedSlotId = null
+      this.fetchSlotCounts()
+    },
+    // 获取已约人数
+    getCount(slot) {
+      const date = this.schedule[this.activeDateIndex].fullDate
+      const key = `${date}|${slot.time}`
+      return this.slotCounts[key] || 0
+    },
+    // 判断是否已满
+    isFull(slot) {
+      return this.getCount(slot) >= 5
+    },
+    // 处理点击
+    handleSlotClick(slot) {
+      if (this.isFull(slot)) {
+        uni.showToast({ title: '该时段已约满', icon: 'none' })
+        return
+      }
+      this.selectedSlotId = slot.id
+    },
+    async fetchSlotCounts() {
+      const dateList = this.schedule.map(d => d.fullDate)
+      const resp = await getSlotCountsAPI.get({ dateList })
+      if (resp.code === 200) {
+        this.slotCounts = resp.data
+      }
+    },
+    async confirmBooking() {
+      const info = uni.getStorageSync('userInfo')
+      if (!info?.phone || !info?.name || !info?.address) {
+        uni.showToast({ title: '请先完善您的居民信息', icon: 'none' })
+        return uni.switchTab({ url: '/pages/Profile/profile' })
+      }
+      const { name, phone, address } = info
+      const appointmentDate = this.schedule[this.activeDateIndex].fullDate
+      const timeSlot = this.schedule[this.activeDateIndex].slots.find(s => s.id === this.selectedSlotId).time
+
+      try {
+        const resp = await bookingAPI.addBooking({ name, phone, address, appointmentDate, timeSlot })
+        if (resp.code === 200) {
+          uni.showToast({ title: '预约成功！', icon: 'success' })
+          await this.fetchSlotCounts()
+        } else {
+          uni.showToast({ title: resp.message, icon: 'none' })
+        }
+      } catch (err) {
+        uni.showToast({ title: err.message || '预约失败', icon: 'none' })
+      }
+    }
+  }
+}
 </script>
+
 
 <style>
 	.page-container {

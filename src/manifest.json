@@ -1,6 +1,11 @@
 {
+// <<<<<<< HEAD
     "name" : "XinHuo",
     "appid" : "__UNI__977066E",
+// =======
+    "name" : "芯火科技助老",
+    "appid" : "__UNI__7050EB9",
+// >>>>>>> ba073892ba034a7c7c949f1a3823c33b36c00ec5
     "description" : "",
     "versionName" : "1.0.0",
     "versionCode" : "100",
@@ -50,7 +55,7 @@
     "quickapp" : {},
     /* 小程序特有相关 */
     "mp-weixin" : {
-        "appid" : "",
+        "appid" : "wx2252edc89d51b134",
         "setting" : {
             "urlCheck" : false
         },
