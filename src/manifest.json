@@ -67,6 +67,8 @@
     },
     "uniStatistics" : {
         "enable" : false
+    "uniStatistics" : {
+        "enable" : false
     },
     "vueVersion" : "3"
 }

@@ -6,7 +6,7 @@ module.exports = {
   
   },
 
-  // 创建公告
+  // ... createNotice, getNotices 等其他函数保持不变 ...
   createNotice: async function (params) {
     const {
       community_id,
@@ -32,14 +32,13 @@ module.exports = {
       throw new Error('内容长度必须在10-2000字之间');
     }
 
-    // 使用 'notice' 集合
     const res = await db.collection('notice').add({
       community_id,
       title,
       content,
       notice_type,
       priority,
-      publish_user_id: "687de55fbece7bc449a71988", // 建议这个ID后续也改为动态获取
+      publish_user_id: "687de55fbece7bc449a71988",
       target_audience,
       target_buildings,
       images,
@@ -48,7 +47,7 @@ module.exports = {
       status: 0,
       expire_time: expire_time ? new Date(expire_time) : null,
       view_count: 0,
-      publish_time: new Date(), // 补充 publish_time 字段
+      publish_time: new Date(),
       create_time: new Date(),
       update_time: new Date()
     });
@@ -60,7 +59,6 @@ module.exports = {
     };
   },
 
-  // 查询公告列表
   getNotices: async function (params) {
     const {
       community_id,
@@ -71,7 +69,6 @@ module.exports = {
       is_top
     } = params;
 
-    // FIX: 将 'notices' 修改为 'notice'
     let query = db.collection('notice')
       .where({
         community_id: community_id || dbCmd.exists(true),
@@ -109,40 +106,49 @@ module.exports = {
     };
   },
 
-  // 获取公告详情
+
+  // FIX: getNoticeDetail 函数已更新
   getNoticeDetail: async function (params) {
-    const { id } = params;
+    // 增加一个 increment 参数，默认为 true
+    const { id, increment = true } = params;
 
     if (!id) {
       throw new Error('公告ID不能为空');
     }
 
-    // FIX: 将 'notices' 修改为 'notice'
-    const res = await db.collection('notice')
-      .doc(id) // 使用 doc(id) 查询效率更高
-      .updateAndReturn({
-        view_count: dbCmd.inc(1)
-      });
-    
-    // updateAndReturn 返回的是更新后的文档，其数据在 res.doc 中
-    if (!res.doc) {
+    let noticeDoc;
+
+    if (increment) {
+      // 如果需要增加次数，则执行 updateAndReturn
+      const res = await db.collection('notice')
+        .doc(id)
+        .updateAndReturn({
+          view_count: dbCmd.inc(1)
+        });
+      noticeDoc = res.doc;
+    } else {
+      // 如果不需要增加次数，则只执行 get
+      const res = await db.collection('notice').doc(id).get();
+      noticeDoc = res.data && res.data.length > 0 ? res.data[0] : null;
+    }
+
+    if (!noticeDoc) {
       throw new Error('公告不存在');
     }
 
     return {
       code: 0,
       msg: '查询成功',
-      data: res.doc
+      data: noticeDoc
     };
   },
 
-  // 更新公告
+  // ... updateNotice, deleteNotice 等其他函数保持不变 ...
   updateNotice: async function (params) {
     const {
       id,
       title,
       content,
-      // ...其他参数
     } = params;
 
     if (!id) {
@@ -150,15 +156,13 @@ module.exports = {
     }
 
     const updateData = {
-      update_time: new Date() // 使用 new Date() 保证时间正确
+      update_time: new Date()
     };
     if (title) updateData.title = title;
     if (content) updateData.content = content;
-    // ... 其他字段的更新逻辑
 
-    // FIX: 将 'notices' 修改为 'notice'
     const res = await db.collection('notice')
-      .doc(id) // 使用 doc(id)
+      .doc(id)
       .update(updateData);
 
     return {
@@ -168,9 +172,7 @@ module.exports = {
     };
   },
 
-  // 删除公告 (保持不变)
   deleteNotice: async function (params) {
-    // ...
     throw new Error('无权限删除公告');
   }
 };
