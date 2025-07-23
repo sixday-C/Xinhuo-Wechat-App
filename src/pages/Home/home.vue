@@ -52,13 +52,13 @@
 			// 点击"线下预约"的事件处理
 			handleOfflineAppointment() {
 				uni.navigateTo({
-									url: '/pages/Home/Appointment/appointment'
+									url: 'pages/Home/Appointment/appointment'
 								});
 			},
 			// 点击"事务上报"的事件处理
 			handleReportIssue() {
 				uni.navigateTo({
-									url: '/pages/Home/Report/report'
+									url: '/uni_modules/uni-feedback/pages/opendb-feedback/opendb-feedback'
 				});
 			}
 		}

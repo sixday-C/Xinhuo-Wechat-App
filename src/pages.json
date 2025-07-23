@@ -43,6 +43,38 @@
 	        "navigationBarTitleText": "历史记录详情"
 	      }
 	    },
+		 // 反馈列表页
+		    {
+		      "path": "uni_modules/uni-feedback/pages/opendb-feedback/list",
+		      "style": {
+		        "navigationBarTitleText": "反馈列表"
+		      }
+		    },
+		    // 新增反馈页（使用opendb-feedback文件）
+		    {
+		      "path": "uni_modules/uni-feedback/pages/opendb-feedback/opendb-feedback",
+		      "style": {
+
+		        "navigationBarTitleText": "提交反馈"
+		    
+		      }
+		    },
+		    // 反馈编辑页
+		    {
+		      "path": "uni_modules/uni-feedback/pages/opendb-feedback/edit",
+		      "style": {
+		    
+		        "navigationBarTitleText": "编辑反馈"
+		      
+		      }
+		    },
+		    // 反馈详情页（根据需求可选）
+		    {
+		      "path": "uni_modules/uni-feedback/pages/opendb-feedback/detail",
+		      "style": {
+		        "navigationBarTitleText": "反馈详情"
+		      }
+		    },
 	    {
 	      "path": "uni_modules/uni-id-pages/pages/register/register",
 	      "style": {
