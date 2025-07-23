@@ -1,12 +1,17 @@
 <template>
 	<view class="detail-container">
+		<!-- 加载状态 -->
+		<view v-if="loading" class="loading-container">
+			<text class="loading-text">加载中...</text>
+		</view>
+		
 		<!-- 头部信息卡片 -->
-		<view class="header-card">
+		<view v-else class="header-card">
 			<view class="status-badge" :class="{'badge-processed': detail.status === '已处理'}">
 				{{ detail.status }}
 			</view>
 			<text class="detail-title">{{ detail.title }}</text>
-			<text class="detail-date">上报时间：{{ detail.date }}</text>
+			<text class="detail-date">上报时间：{{ detail.createTime || detail.date }}</text>
 			
 			<!-- 进度条 -->
 			<view class="progress-section">
@@ -18,7 +23,7 @@
 							backgroundColor: getProgressColor(detail.status)
 						}"></view>
 					</view>
-					<text class="progress-percentage">{{ detail.progress }}%</text>
+					<!-- 百分比数字已移除 -->
 				</view>
 			</view>
 		</view>
@@ -28,15 +33,28 @@
 			<view class="card-title">详细信息</view>
 			<view class="info-item">
 				<text class="info-label">事务类型</text>
-				<text class="info-value">{{ detail.type || '设施维修' }}</text>
+				<text class="info-value">{{ detail.category || '设施维修' }}</text>
 			</view>
 			<view class="info-item">
 				<text class="info-label">上报地址</text>
-				<text class="info-value">{{ detail.location || '小区公共区域' }}</text>
+				<text class="info-value">{{ detail.locationInfo?.address || detail.userAddress || '小区公共区域' }}</text>
 			</view>
 			<view class="info-item">
 				<text class="info-label">问题描述</text>
 				<text class="info-value">{{ detail.description || '具体问题描述内容...' }}</text>
+			</view>
+		</view>
+		<!-- 图片展示区域 -->
+		<view v-if="detail.imageUrls && detail.imageUrls.length > 0" class="detail-images">
+			<view class="image-list">
+				<image
+					v-for="(img, idx) in detail.imageUrls"
+					:key="idx"
+					:src="img"
+					class="detail-image"
+					mode="aspectFill"
+					@click="previewImage(idx)"
+				/>
 			</view>
 		</view>
 
@@ -68,24 +86,20 @@ export default {
 	data() {
 		return {
 			detail: {},
-			timelineSteps: []
+			timelineSteps: [],
+			loading: true
 		}
 	},
 	onLoad(options) {
-		// 接收传递的参数
-		this.detail = {
-			id: options.id,
-			title: decodeURIComponent(options.title || ''),
-			date: options.date || '',
-			status: options.status || '',
-			progress: parseInt(options.progress || '0'),
-			type: options.type || '设施维修',
-			location: options.location || '小区公共区域',
-			description: options.description || '具体问题描述内容，这里可以显示更详细的问题说明和相关信息。'
-		};
+		this.recordId = options.id;
+		this.recordType = options.type || 'report';
 		
-		// 生成时间线数据
-		this.generateTimeline();
+		if (this.recordType === 'report') {
+			this.loadReportDetail();
+		} else {
+			// 如果是预约类型，使用原有的静态数据逻辑
+			this.loadAppointmentDetail(options);
+		}
 	},
 	methods: {
 		// 根据状态获取进度条颜色
@@ -98,31 +112,95 @@ export default {
 			return '#007AFF';
 		},
 		
-		// 生成时间线
+		// 加载问题上报详情
+		async loadReportDetail() {
+			try {
+				const getReportDetail = uniCloud.importObject('getReportDetail');
+				const response = await getReportDetail.getReportDetail({
+					id: this.recordId
+				});
+
+				if (response.code === 200 && response.data) {
+					this.detail = response.data;
+					this.timelineSteps = response.data.timeline || [];
+				} else {
+					uni.showToast({
+						title: response.message || '获取详情失败',
+						icon: 'none'
+					});
+					// 设置默认数据防止页面崩溃
+					this.setDefaultDetail();
+				}
+			} catch (e) {
+				console.error('获取详情异常：', e);
+				uni.showToast({
+					title: '网络异常，请稍后重试',
+					icon: 'none'
+				});
+				this.setDefaultDetail();
+			} finally {
+				this.loading = false;
+			}
+		},
+
+		// 加载预约详情（使用原有逻辑）
+		loadAppointmentDetail(options) {
+			this.detail = {
+				id: options.id,
+				title: decodeURIComponent(options.title || ''),
+				createTime: options.date || '',
+				status: options.status || '',
+				progress: parseInt(options.progress || '0'),
+				category: options.type || '线下预约',
+				locationInfo: { address: options.location || '社区服务中心' },
+				description: options.description || '线下预约服务'
+			};
+			
+			this.generateTimeline();
+			this.loading = false;
+		},
+
+		// 设置默认详情数据
+		setDefaultDetail() {
+			this.detail = {
+				id: this.recordId,
+				title: '数据加载失败',
+				description: '无法获取详细信息',
+				status: '未知',
+				progress: 0,
+				category: '其他问题',
+				createTime: '',
+				locationInfo: { address: '未知' },
+				timeline: []
+			};
+			this.timelineSteps = [];
+		},
+
+		// 生成时间线（用于预约类型）
 		generateTimeline() {
 			if (this.detail.status === '已处理') {
 				this.timelineSteps = [
 					{
 						title: '问题上报',
-						time: this.detail.date,
+						time: this.detail.createTime,
 						completed: true,
 						current: false
 					},
 					{
 						title: '受理确认',
-						time: this.getNextDay(this.detail.date, 1),
+						time: this.getNextDay(this.detail.createTime, 1),
 						completed: true,
 						current: false
 					},
 					{
 						title: '处理中',
-						time: this.getNextDay(this.detail.date, 2),
+						time: this.getNextDay(this.detail.createTime, 2),
 						completed: true,
 						current: false
 					},
 					{
 						title: '处理完成',
-						time: this.getNextDay(this.detail.date, 3),
+						time: this.getNextDay(this.detail.createTime, 3),
 						completed: true,
 						current: false
 					}
@@ -131,25 +209,25 @@ export default {
 				this.timelineSteps = [
 					{
 						title: '问题上报',
-						time: this.detail.date,
+						time: this.detail.createTime,
 						completed: true,
 						current: false
 					},
 					{
 						title: '受理确认',
-						time: this.getNextDay(this.detail.date, 1),
+						time: this.getNextDay(this.detail.createTime, 1),
 						completed: true,
 						current: false
 					},
 					{
 						title: '处理中',
-						time: this.getNextDay(this.detail.date, 2),
+						time: this.getNextDay(this.detail.createTime, 2),
 						completed: false,
 						current: true
 					},
 					{
 						title: '待处理完成',
-						time: '预计' + this.getNextDay(this.detail.date, 5),
+						time: '预计' + this.getNextDay(this.detail.createTime, 5),
 						completed: false,
 						current: false
 					}
@@ -174,6 +252,14 @@ export default {
 			uni.showToast({
 				title: '正在为您接通客服',
 				icon: 'none'
+			});
+		},
+
+		// 预览图片
+		previewImage(idx) {
+			uni.previewImage({
+				current: this.detail.imageUrls[idx],
+				urls: this.detail.imageUrls
 			});
 		}
 	}
@@ -258,13 +344,6 @@ export default {
 	height: 100%;
 	border-radius: 6rpx;
 	transition: width 0.3s ease;
-}
-
-.progress-percentage {
-	font-size: 28rpx;
-	color: #666;
-	font-weight: bold;
-	min-width: 80rpx;
 }
 
 /* 信息卡片 */
@@ -404,5 +483,34 @@ export default {
 
 .action-btn:active {
 	opacity: 0.8;
+}
+
+/* 加载状态 */
+.loading-container {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	min-height: 400rpx;
+}
+
+.loading-text {
+	font-size: 32rpx;
+	color: #666;
+}
+
+/* 图片展示区域 */
+.detail-images {
+	margin: 20rpx 0;
+}
+.image-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 16rpx;
+}
+.detail-image {
+	width: 180rpx;
+	height: 180rpx;
+	border-radius: 8rpx;
+	object-fit: cover;
 }
 </style> 
