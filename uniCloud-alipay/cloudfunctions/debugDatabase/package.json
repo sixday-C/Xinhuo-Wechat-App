@@ -1,0 +1,11 @@
+{
+    "name": "debugDatabase",
+    "version": "1.0.0",
+    "description": "数据库调试云对象",
+    "main": "index.obj.js",
+    "dependencies": {},
+    "cloudfunction-config": {
+        "memorySize": 512,
+        "timeout": 10
+    }
+}

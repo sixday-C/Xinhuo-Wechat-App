@@ -1,0 +1,167 @@
+<template>
+  <view
+    :class="classList"
+    v-if="imageData.image != ''"
+  >
+    <image
+      :src="imagePath"
+      :style="styles"
+      :alt="imageData.attributes.alt"
+      class="img"
+      mode="aspectFill"
+      @load="imageLoad"
+      @click="imagePreview"
+    ></image>
+  </view>
+</template>
+<script lang="uts">
+  import {parseImageUrl} from "@/uni_modules/uni-cms-article/common/parse-image-url.uts";
+  import type {ParseImageUrlResult} from '@/uni_modules/uni-cms-article/common/parse-image-url.uts';
+  type ImageAttributes = {
+    customParams: string | null
+    width: number | null
+    height: number | null
+    alt: string | null
+  }
+  type ImageData = {
+    image: string
+    attributes: ImageAttributes
+  }
+  type ImageCalResult = {
+    width: number
+    height: number
+  }
+
+  export default {
+    name: "render-image",
+    emits: ['imagePreview'],
+    props: {
+      deltaOp: {
+        type: Object as UTSJSONObject,
+        default (): UTSJSONObject {
+          return {}
+        }
+      },
+      reset: {
+        type: Boolean,
+        default: false
+      }
+    },
+    data () {
+      return {
+        width: 0,
+        height: 0,
+        imagePath: ''
+      }
+    },
+    computed: {
+      imageData (): ImageData {
+        const insert = this.deltaOp!.getJSON('insert')! as UTSJSONObject
+        const attributes: UTSJSONObject | null = this.deltaOp!.getJSON('attributes')
+        console.log(insert, attributes)
+        return {
+          image: insert.getString('image')!,
+          attributes: {
+            customParams: attributes != null ? attributes.getString('data-custom'): null,
+            width: attributes != null ? attributes!.getNumber('width'): null,
+            height: attributes != null ? attributes!.getNumber('height'): null,
+            alt: attributes != null ? attributes!.getString('alt'): null,
+          }
+        } as ImageData
+      },
+      classList (): string[] {
+        return [
+          'image',
+          this.reset ? 'reset': ''
+        ] as string[]
+      },
+      styles (): string {
+        let style = ""
+
+        if (this.width != 0) {
+          style += `;width:${this.width}px`
+        }
+        if (this.height != 0) {
+          style += `;height:${this.height}px`
+        }
+        return style
+      }
+    },
+    mounted () {
+      this.loadImagePath()
+    },
+    methods: {
+      async loadImagePath (): Promise<void> {
+        const {image, attributes} = this.imageData
+        const parseImages = await parseImageUrl({
+          insert: {image},
+          attributes: {
+            'data-custom': attributes.customParams != null ? attributes.customParams : ""
+          }
+        }, "editor")
+
+        if (parseImages != null) {
+          this.imagePath = parseImages[0].src
+        }
+      },
+      imagePreview () {
+        this.$emit('imagePreview', this.imageData.image)
+      },
+      // 图片加载完成
+      imageLoad(e: ImageLoadEvent) {
+        const recal = this.wxAutoImageCal(e.detail.width, e.detail.height, 15) // 计算图片宽高
+        // const image = this.imageData
+
+        // ::TODO 关注一下在多端得表现情况
+        // if (!image.data.attributes.width || Number(image.data.attributes.width) > recal.imageWidth) {
+        // 如果图片宽度不存在或者图片宽度大于计算出来的宽度，则设置图片宽高
+        this.width = recal.width
+        this.height = recal.height
+        // }
+      },
+
+      // 计算图片宽高
+      wxAutoImageCal(originalWidth: number, originalHeight: number, imagePadding: number): ImageCalResult {
+        // 获取系统信息
+        const systemInfo = uni.getSystemInfoSync()
+        let windowWidth: number;
+        // let windowHeight: number;
+        let autoWidth: number;
+        let autoHeight: number;
+
+        let results: ImageCalResult = {
+          width: 0,
+          height: 0
+        };
+        // 计算图片宽度
+        windowWidth = systemInfo.windowWidth - 2 * imagePadding;
+        // windowHeight = systemInfo.windowHeight;
+        if (originalWidth > windowWidth) {//在图片width大于手机屏幕width时候
+          autoWidth = windowWidth;
+          autoHeight = (autoWidth * originalHeight) / originalWidth;
+          results.width = autoWidth;
+          results.height = autoHeight;
+        } else {//否则展示原来的数据
+          results.width = originalWidth;
+          results.height = originalHeight;
+        }
+        return results;
+
+      }
+    }
+  }
+</script>
+
+<style scoped lang="scss">
+  .image {
+    margin-bottom: 40rpx;
+    &.reset {
+      margin-bottom: 0;
+    }
+    .img {
+      display: flex;
+      border-radius: 12rpx;
+      margin: 0 auto;
+    }
+  }
+</style>

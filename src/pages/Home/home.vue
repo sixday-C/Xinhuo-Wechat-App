@@ -45,10 +45,9 @@
 		methods: {
 			// 点击"线上客服"的事件处理
 			handleOnlineService() {
-				uni.showToast({
-					title: '线上客服功能暂未开放',
-					icon: 'none'
-				});
+				uni.navigateTo({
+					url:'/uni_modules/uni-id-pages/pages/login/login-withpwd'
+				})
 			},
 			// 点击"线下预约"的事件处理
 			handleOfflineAppointment() {

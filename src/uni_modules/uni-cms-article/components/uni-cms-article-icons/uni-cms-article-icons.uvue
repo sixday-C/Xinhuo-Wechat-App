@@ -1,0 +1,54 @@
+<template>
+    <view>
+        <text class="uni-cms-article-icon" :style="{color, 'fontSize': size + 'px', lineHeight: size + 'px'}">{{iconCode}}</text>
+    </view>
+</template>
+
+<script lang="uts">
+    const icons: UTSJSONObject = {
+        search: "\ue654",
+        back: "\ue6b9",
+        scan: "\ue62a",
+        closeempty: "\ue66c",
+        trash: "\ue687",
+        reload: "\ue6b2",
+        eye: "\ue651",
+        'eye-slash': '\ue6b3'
+    }
+
+    export default {
+        name: 'uni-cms-article-icons',
+        props: {
+            type: {
+                type: String,
+                default: ""
+            },
+            color: {
+                type: String,
+                default: '#333333'
+            },
+            size: {
+                type: Number,
+                default: 16
+            }
+        },
+        computed: {
+            iconCode(): string {
+                return icons.getString(this.type) as string
+            }
+        }
+    }
+</script>
+
+<style>
+    @font-face {
+        font-family: "uni-cms-article-icons";
+        src: url('/uni_modules/uni-cms-article/static/uniicons.ttf');
+    }
+
+    .uni-cms-article-icon {
+        font-family: "uni-cms-article-icons";
+        font-style: normal;
+    }
+
+</style>

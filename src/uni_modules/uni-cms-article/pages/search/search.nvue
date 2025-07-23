@@ -1,0 +1,752 @@
+<template>
+	<view class="container">
+		<view class="search-container">
+			<!-- 搜索框 -->
+			<view class="search-container-bar">
+				<!-- #ifdef APP-PLUS -->
+				<uni-icons class="search-icons" :color="iconColor" size="22" type="mic-filled" @click="speech" />
+				<!-- #endif -->
+				<!-- :cancelText="keyBoardPopup ? '取消' : '搜索'" -->
+				<uni-search-bar ref="searchBar" style="flex:1;" radius="100" v-model="searchText" :focus="focus"
+					:placeholder="hotWorld" clearButton="auto" cancelButton="none" @clear="cancel" @confirm="confirm"
+					@cancel="cancel" />
+        <uni-icons class="scan-icons" :color="iconColor" size="22" type="scan" @click="scanEvent"></uni-icons>
+			</view>
+		</view>
+		<view class="search-body">
+			<unicloud-db ref='listUdb' v-slot:default="{ pagination, hasMore, loading, error, options }"
+				@error="onqueryerror" :collection="colList" :page-size="10" orderby="publish_date desc" @load="onDbLoad"
+				loadtime="manual">
+				<template v-if="!isLoadData">
+					<!-- 搜索历史 -->
+					<view class="word-container" v-if="localSearchList.length">
+						<view class="word-container_header">
+							<text class="word-container_header-text">搜索历史</text>
+							<uni-icons v-if="!localSearchListDel" @click="localSearchListDel = true" class="search-icons"
+								style="padding-right: 0;" :color="iconColor" size="18" type="trash"></uni-icons>
+							<view v-else class="flex-center flex-row"
+								style="font-weight: 500;justify-content: space-between;">
+								<text
+									style="font-size: 22rpx;color: #666;padding-top:4rpx;padding-bottom:4rpx;padding-right:20rpx;"
+									@click="LocalSearchListClear">全部删除</text>
+								<text
+									style="font-size: 22rpx;color: #c0402b;padding-top:4rpx;padding-bottom:4rpx;padding-left:20rpx;"
+									@click="localSearchListDel = false">完成</text>
+							</view>
+						</view>
+
+						<view class="word-container_body">
+							<view class="flex-center flex-row word-container_body-text"
+								v-for="(word, index) in localSearchList" :key="index"
+								@click="LocalSearchlistItemClick(word, index)">
+								<text class="word-display" :key="word">{{ word }}</text>
+								<uni-icons v-if="localSearchListDel" size="12" type="closeempty" />
+							</view>
+						</view>
+					</view>
+					<!-- 搜索发现 -->
+					<view class="word-container">
+						<view class="word-container_header">
+							<view class="flex-center flex-row">
+								<text class="word-container_header-text">搜索发现</text>
+								<uni-icons v-if="!netHotListIsHide" class="search-icons" :color="iconColor" size="14"
+									type="reload" @click="searchHotRefresh"></uni-icons>
+							</view>
+							<uni-icons class="search-icons" style="padding-right: 0;" :color="iconColor" size="18"
+								:type="netHotListIsHide ? 'eye-slash' : 'eye'"
+								@click="netHotListIsHide = !netHotListIsHide"></uni-icons>
+						</view>
+						<unicloud-db ref="udb" #default="{ data, loading, error, options }" field="content"
+							collection="opendb-search-hot" orderby="create_date desc,count desc" page-data="replace"
+							:page-size="10">
+							<text v-if="loading && !netHotListIsHide" class="word-container_body-info">正在加载...</text>
+							<view v-else class="word-container_body">
+								<template v-if="!netHotListIsHide">
+									<text v-if="error" class="word-container_body-info">{{ error.message }}</text>
+									<template v-else>
+										<text v-for="(word, index) in data" class="word-container_body-text" :key="index"
+											@click="search(word.content)">{{ word.content }}</text>
+									</template>
+								</template>
+								<view v-else style="flex:1;">
+									<text class="word-container_body-info">当前搜索发现已隐藏</text>
+								</view>
+							</view>
+						</unicloud-db>
+					</view>
+				</template>
+				<uni-list v-else class="uni-list" :border="false" :style="{ height: listHeight }">
+					<!-- 列表渲染 -->
+					<uni-list-item :to="'/uni_modules/uni-cms-article/pages/detail/detail?id=' + item._id"
+						v-for="(item, index) in searchList" :key="index">
+						<!-- 通过header插槽定义列表左侧图片 -->
+						<template v-slot:header>
+							<image class="thumbnail" :src="item.thumbnail" mode="aspectFill"></image>
+						</template>
+						<!-- 通过body插槽定义布局 -->
+						<template v-slot:body>
+							<view class="main">
+								<text class="title">{{ item.title }}</text>
+								<view class="info">
+									<text class="author">{{ item.user_id[0] ? item.user_id[0].nickname : '' }}</text>
+									<text class="publish_date">{{ publishTime(item.publish_date) }}</text>
+									<!--                -->
+									<!--                <uni-dateformat class="publish_date" :date="item.publish_date"-->
+									<!--                                format="yyyy-MM-dd" :threshold="[60000, 2592000000]"/>-->
+								</view>
+							</view>
+						</template>
+					</uni-list-item>
+					<!-- 加载状态：上拉加载更多，加载中，没有更多数据了，加载错误 -->
+					<!-- #ifdef APP-PLUS -->
+					<uni-list-item>
+						<template v-slot:body>
+							<!-- #endif -->
+							<uni-load-state @networkResume="refresh" :state="{ data: searchList, pagination, hasMore, loading, error }"
+								@loadMore="loadMore">
+							</uni-load-state>
+							<!-- #ifdef APP-PLUS -->
+						</template>
+					</uni-list-item>
+					<!-- #endif -->
+				</uni-list>
+			</unicloud-db>
+		</view>
+		<!-- 搜索联想 -->
+		<view class="search-associative" v-if="associativeShow">
+			<uni-list>
+				<uni-list-item v-for="(item, index) in associativeList" :key="item._id" :ellipsis="1" :title="item.title"
+					@click="associativeClick(item)" show-extra-icon clickable
+					:extra-icon="{ size: 18, color: iconColor, type: 'search' }">
+				</uni-list-item>
+			</uni-list>
+		</view>
+	</view>
+</template>
+
+<script>
+/**
+ * 云端一体搜索模板
+ * @description uniCloud云端一体搜索模板，自带下拉候选、历史搜索、热搜。无需再开发服务器代码
+ */
+
+import translatePublishTime from "@/uni_modules/uni-cms-article/common/publish-time";
+import parseScanResult from "@/uni_modules/uni-cms-article/common/parse-scan-result";
+import {parseImageUrl} from "@/uni_modules/uni-cms-article/common/parse-image-url";
+
+const searchLogDbName = 'opendb-search-log'; // 搜索记录数据库
+const articleDbName = 'uni-cms-articles'; // 文章数据库
+const associativeSearchField = 'title'; // 联想时，搜索框值检索数据库字段名
+const associativeField = '_id,title'; // 联想列表每一项携带的字段
+const localSearchListKey = '__local_search_history'; //	本地历史存储字段名
+
+const db = uniCloud.database();
+const articleDBName = 'uni-cms-articles'
+const userDBName = 'uni-id-users'
+
+// 数组去重
+const arrUnique = arr => {
+	for (let i = arr.length - 1; i >= 0; i--) {
+		const curIndex = arr.indexOf(arr[i]);
+		const lastIndex = arr.lastIndexOf(arr[i])
+		curIndex != lastIndex && arr.splice(lastIndex, 1)
+	}
+	return arr
+} // 节流
+// 防抖
+function debounce(fn, interval, isFirstAutoRun) {
+	/**
+	 *
+	 * @param {要执行的函数} fn
+	 * @param {在操作多长时间后可再执行，第一次立即执行} interval
+	 */
+	var _self = fn;
+	var timer = null;
+	var first = true;
+
+	if (isFirstAutoRun) {
+		_self();
+	}
+
+	return function () {
+		var args = arguments;
+		var _me = this;
+		if (first) {
+			first = false;
+			_self.apply(_me, args);
+		}
+
+		if (timer) {
+			clearTimeout(timer)
+			// return false;
+		}
+
+		timer = setTimeout(function () {
+			clearTimeout(timer);
+			timer = null;
+			_self.apply(_me, args);
+		}, interval || 200);
+	}
+}
+
+export default {
+	// 组件数据
+	data() {
+		return {
+			// 文章数据库名称
+			articleDbName,
+			// 搜索记录数据库名称
+			searchLogDbName,
+			// 状态栏高度
+			statusBarHeight: '0px',
+			// 本地搜索列表
+			localSearchList: uni.getStorageSync(localSearchListKey),
+			// 是否删除本地搜索列表
+			localSearchListDel: false,
+			// 是否隐藏网络热搜列表
+			netHotListIsHide: false,
+			// 搜索文本
+			searchText: '',
+			// 图标颜色
+			iconColor: '#999999',
+			// 联想列表
+			associativeList: [],
+			// 是否弹出键盘
+			keyBoardPopup: false,
+			// 搜索热词
+			hotWorld: 'DCloud', //	搜索热词，如果没有输入即回车，则搜索热词，但是不会加入搜索记录
+			// 是否自动聚焦
+			focus: true,
+			// 语音识别引擎
+			speechEngine: 'iFly', //	语音识别引擎 iFly 讯飞 baidu 百度
+			// 是否正在加载数据
+			isLoadData: false,
+			// 数据库查询条件
+			where: '"article_status" == 1',
+			// 列表高度
+			listHeight: 0,
+			// 是否显示联想列表
+			associativeShow: false,
+			// 是否显示无联想列表
+			noAssociativeShow: false,
+      // 搜索结果列表
+      searchList: []
+		}
+	},
+	// 组件创建时执行
+	created() {
+		// 初始化数据库
+		this.db = uniCloud.database();
+		this.searchLogDb = this.db.collection(this.searchLogDbName);
+		this.articleDbName = this.db.collection(this.articleDbName);
+		// #ifndef H5
+		// 监听键盘高度变化
+		uni.onKeyboardHeightChange((res) => {
+			this.keyBoardPopup = res.height !== 0;
+		})
+		// #endif
+	},
+	// 计算属性
+	computed: {
+		colList() {
+			// 返回文章和用户列表
+			return [
+				db.collection(articleDBName).where(this.where).field('thumbnail,title,publish_date,user_id').getTemp(),
+				db.collection(userDBName).field('_id,nickname').getTemp()
+			]
+		}
+	},
+	// 页面初次渲染完成时执行
+	onReady() {
+		// #ifdef APP-NVUE
+		/* 可用窗口高度 - 搜索框高 - 状态栏高 */
+		this.listHeight = uni.getSystemInfoSync().windowHeight + 'px';
+		// #endif
+		// #ifndef APP-NVUE
+		this.listHeight = 'auto'
+		// #endif
+	},
+	// 页面加载时执行
+	onLoad() {
+		//#ifdef APP-PLUS
+		// 获取状态栏高度
+		this.statusBarHeight = `${uni.getSystemInfoSync().statusBarHeight}px`;
+		//#endif
+	},
+	// 组件方法
+	methods: {
+		// 清空搜索框
+		clear(res) {
+			console.log("res: ", res);
+		},
+		// 确认搜索
+		confirm(res) {
+			// 键盘确认
+			this.search(res.value);
+		},
+		// 取消搜索
+		cancel(res) {
+			uni.hideKeyboard();
+			this.searchText = '';
+			this.isLoadData = false
+			this.associativeShow = false
+			// this.loadList();
+		},
+		// 执行搜索
+		search(value) {
+			if (!value && !this.hotWorld) {
+				return;
+			}
+			if (value) {
+				if (this.searchText !== value) {
+					this.searchText = value
+				}
+
+				this.localSearchListManage(value);
+
+				this.searchLogDbAdd(value)
+			} else if (this.hotWorld) {
+				this.searchText = this.hotWorld
+			}
+
+			uni.hideKeyboard();
+			this.loadList(this.searchText);
+		},
+		// 管理本地搜索列表
+		localSearchListManage(word) {
+			let list = uni.getStorageSync(localSearchListKey);
+			if (list.length) {
+				this.localSearchList.unshift(word);
+				arrUnique(this.localSearchList);
+				if (this.localSearchList.length > 10) {
+					this.localSearchList.pop();
+				}
+			} else {
+				this.localSearchList = [word];
+			}
+			uni.setStorageSync(localSearchListKey, this.localSearchList);
+		},
+		// 清空本地搜索列表
+		LocalSearchListClear() {
+			uni.showModal({
+				content: "确认清空搜索历史吗",
+				confirmText: "删除",
+				confirmColor: 'red',
+				cancelColor: '#808080',
+				success: res => {
+					if (res.confirm) {
+						this.localSearchListDel = false;
+						this.localSearchList = [];
+						uni.removeStorageSync(localSearchListKey)
+					}
+				}
+			});
+		},
+		// 点击本地搜索列表项
+		LocalSearchlistItemClick(word, index) {
+			if (this.localSearchListDel) {
+				this.localSearchList.splice(index, 1);
+				uni.setStorageSync(localSearchListKey, this.localSearchList);
+				if (!this.localSearchList.length) {
+					this.localSearchListDel = false;
+				}
+				return;
+			}
+			this.noAssociativeShow = true;
+			this.search(word);
+		},
+		// 刷新搜索热词
+		searchHotRefresh() {
+			this.$refs.udb.refresh();
+		},
+		// 语音搜索
+		speech() {
+			// #ifdef APP-PLUS
+			plus.speech.startRecognize({
+				engine: this.speechEngine,
+				punctuation: false, // 标点符号
+				timeout: 10000
+			}, word => {
+				word = word instanceof Array ? word[0] : word;
+				this.search(word)
+			}, err => {
+				console.error("语音识别错误: ", err);
+			});
+			// #endif
+		},
+		// 添加搜索记录
+		searchLogDbAdd(value) {
+			/*
+				在此处存搜索记录，如果登录则需要存 user_id，若未登录则存device_id
+			 */
+			this.getDeviceId().then(device_id => {
+				this.searchLogDb.add({
+					// user_id: device_id,
+					device_id,
+					content: value,
+					create_date: Date.now()
+				})
+			})
+		},
+		// 获取设备ID
+		getDeviceId() {
+			return new Promise((resolve, reject) => {
+				// 从本地缓存中获取uni_id
+				const uniId = uni.getStorageSync('uni_id');
+				// 如果uni_id不存在，则获取设备信息
+				if (!uniId) {
+					// #ifdef APP-PLUS
+					plus.device.getInfo({
+						success: (deviceInfo) => {
+							resolve(deviceInfo.uuid)
+						},
+						fail: () => {
+							// 如果获取设备信息失败，则返回一个随机字符串
+							resolve(uni.getSystemInfoSync().system + '_' + Math.random().toString(36).substr(2))
+						}
+					});
+					// #endif
+					// #ifndef APP-PLUS
+					// 如果不是APP-PLUS，则返回一个随机字符串
+					resolve(uni.getSystemInfoSync().system + '_' + Math.random().toString(36).substr(2))
+					// #endif
+				} else {
+					// 如果uni_id存在，则直接返回uni_id
+					resolve(uniId)
+				}
+			})
+		},
+		// 点击联想词
+		associativeClick(item) {
+			/**
+			 * 注意：这里用户根据自己的业务需要，选择跳转的页面即可
+			 */
+			console.log("associativeClick: ", item, item.title);
+			// 隐藏联想词
+			this.noAssociativeShow = true;
+			// 将搜索框的文本设置为联想词的标题
+			this.searchText = item.title;
+			// 加载列表
+			this.loadList(item.title);
+		},
+		// 加载列表
+		loadList(text = '') {
+			// 设置查询条件
+			let where = '"article_status" == 1 '
+			if (text) {
+				this.where = where + `&& /${text}/.test(title)`;
+			} else {
+				this.where = where;
+			}
+
+			// 隐藏联想词
+			this.associativeList = [];
+			this.associativeShow = false;
+
+      this.searchList = []
+      this.isLoadData = true
+
+			// 延迟0ms后加载数据
+			setTimeout(() => {
+				this.$refs.listUdb.loadData({
+					clear: true
+				})
+			}, 0)
+		},
+		// 数据库加载完成
+		async onDbLoad(data) {
+			console.log('onDbLoad')
+			// 设置数据已加载标志
+			this.isLoadData = true
+			// 显示联想词
+			this.noAssociativeShow = false;
+
+      for (const article of data) {
+        const parseImages = await parseImageUrl(article.thumbnail)
+
+        article.thumbnail = parseImages ? parseImages.map(image => image.src): []
+      }
+
+      this.searchList = data
+		},
+		// 查询错误
+		onqueryerror(e) {
+			console.error(e);
+		},
+		// 刷新
+		refresh() {
+			// 刷新数据
+			this.$refs.listUdb.loadData({
+				clear: true
+			}, () => {
+				// 停止下拉刷新
+				uni.stopPullDownRefresh()
+				// #ifdef APP-NVUE
+				// 隐藏刷新按钮
+				this.showRefresh = false
+				// #endif
+			})
+		},
+		// 加载更多
+		loadMore() {
+			// 加载更多数据
+			this.$refs.listUdb.loadMore()
+		},
+		// 格式化发布时间
+		publishTime(timestamp) {
+			return translatePublishTime(timestamp)
+		},
+    scanEvent () {
+      uni.scanCode({
+        onlyFromCamera: true,
+        scanType: ["qrCode"],
+        success: (e) => parseScanResult(e.result),
+        fail: (e) => {
+          console.error(e)
+        }
+      })
+    }
+	},
+	onReachBottom() {
+		// 当滚动到底部时，加载更多数据
+		this.loadMore()
+	},
+	watch: {
+		searchText: debounce(function (value, oldValue) {
+			// 当搜索框的文本发生变化时，执行以下操作
+			if (value === oldValue) return
+			if (this.noAssociativeShow) return
+
+			if (value) {
+				// 根据搜索框的文本，查询联想词
+				this.articleDbName.where({
+					[associativeSearchField]: new RegExp(value, 'gi'),
+				}).field(associativeField).get().then(res => {
+					// 将查询结果赋值给联想词列表，并显示联想词
+					this.associativeList = res.result.data;
+					this.associativeShow = true
+				})
+			} else {
+				// 如果搜索框的文本为空，则清空联想词列表
+				this.associativeList = [];
+			}
+
+		}, 100)
+	}
+
+}
+</script>
+
+<style>
+/* #ifndef APP-NVUE */
+page {
+	height: 100%;
+	flex: 1;
+}
+
+/* #endif */
+</style>
+
+<style lang="scss" scoped>
+$search-bar-height: 52px;
+$word-container_header-height: 72rpx;
+
+.status-bar {
+	background-color: #fff;
+}
+
+.container {
+	/* #ifndef APP-NVUE */
+	height: 100%;
+	/* #endif */
+	flex: 1;
+	background-color: #f7f7f7;
+}
+
+.search-body {
+	background-color: #fff;
+	border-bottom-right-radius: 10px;
+	border-bottom-left-radius: 10px;
+}
+
+@mixin uni-flex {
+	/* #ifndef APP-NVUE */
+	display: flex;
+	/* #endif */
+}
+
+@mixin words-display {
+	font-size: 26rpx;
+	color: #666;
+}
+
+.flex-center {
+	@include uni-flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.flex-row {
+	@include uni-flex;
+	flex-direction: row;
+}
+
+/* #ifdef APP-PLUS */
+/* #ifndef APP-NVUE  || VUE3*/
+::v-deep
+
+/* #endif */
+.uni-searchbar {
+	padding-left: 0;
+}
+
+/* #endif */
+
+/* #ifndef APP-NVUE || VUE3*/
+::v-deep
+
+/* #endif */
+.uni-searchbar__box {
+	border-width: 0;
+}
+
+/* #ifndef APP-NVUE || VUE3 */
+::v-deep
+
+/* #endif */
+.uni-input-placeholder {
+	font-size: 28rpx;
+}
+
+.search-container {
+	height: $search-bar-height;
+	@include uni-flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	position: relative;
+	background-color: #fff;
+
+	@at-root {
+		#{&}-bar {
+			@include uni-flex;
+			flex-direction: row;
+			justify-content: center;
+			align-items: center;
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+		}
+	}
+}
+
+.search-associative {
+	/* #ifndef APP-NVUE */
+	overflow-y: auto;
+	/* #endif */
+	position: absolute;
+	top: $search-bar-height;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: #fff;
+	margin-top: 10rpx;
+	padding-left: 10rpx;
+	padding-right: 10rpx;
+}
+
+.search-icons, .scan-icons {
+	padding: 16rpx;
+}
+.scan-icons {
+  padding-left: 0;
+}
+.word-display {
+	@include words-display;
+}
+
+.word-container {
+	padding: 20rpx;
+
+	@at-root {
+		#{&}_header {
+			@include uni-flex;
+			height: $word-container_header-height;
+			line-height: $word-container_header-height;
+			flex-direction: row;
+			justify-content: space-between;
+			align-items: center;
+
+			@at-root {
+				#{&}-text {
+					color: #3e3e3e;
+					font-size: 30rpx;
+					font-weight: bold;
+				}
+			}
+		}
+
+		#{&}_body {
+			@include uni-flex;
+			flex-wrap: wrap;
+			flex-direction: row;
+
+			@at-root {
+				#{&}-text {
+					@include uni-flex;
+					@include words-display;
+					justify-content: center;
+					align-items: center;
+					background-color: #f6f6f6;
+					padding: 10rpx 20rpx;
+					margin: 20rpx 30rpx 0 0;
+					border-radius: 30rpx;
+					/* #ifndef APP-NVUE */
+					box-sizing: border-box;
+					/* #endif */
+					text-align: center;
+				}
+
+				#{&}-info {
+					/* #ifndef APP-NVUE */
+					display: block;
+					/* #endif */
+					flex: 1;
+					text-align: center;
+					font-size: 26rpx;
+					color: #808080;
+					margin-top: 20rpx;
+				}
+			}
+		}
+	}
+}
+
+.thumbnail {
+	width: 240rpx;
+	height: 160rpx;
+	margin-right: 20rpx;
+  border-radius: 8rpx;
+}
+
+.main {
+	justify-content: space-between;
+	flex: 1;
+}
+
+.title {
+	font-size: 32rpx;
+}
+
+.info {
+	flex-direction: row;
+	justify-content: space-between;
+}
+
+.author,
+.publish_date {
+	font-size: 28rpx;
+	color: #999999;
+}
+</style>

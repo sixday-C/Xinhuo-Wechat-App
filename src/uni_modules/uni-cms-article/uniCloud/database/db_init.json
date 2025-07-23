@@ -1,0 +1,23 @@
+{
+  "uni-cms-unlock-record": {
+    "data": [],
+    "index": [
+      {
+        "IndexName": "unique_article_trans_",
+        "MgoKeySchema": {
+          "MgoIndexKeys": [{
+            "Name": "unique_id",
+            "Direction": "1"
+          },{
+            "Name": "article_id",
+            "Direction": "1"
+          },{
+            "Name": "trans_id",
+            "Direction": "1"
+          }],
+          "MgoIsUnique": false
+        }
+      }
+    ]
+  }
+}

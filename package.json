@@ -57,12 +57,15 @@
   },
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "@babel/plugin-transform-runtime": "^7.28.0",
+    "@babel/runtime": "^7.27.6",
     "@dcloudio/types": "^3.4.8",
     "@dcloudio/uni-automator": "3.0.0-4060420250429001",
     "@dcloudio/uni-cli-shared": "3.0.0-4060420250429001",
     "@dcloudio/uni-stacktracey": "3.0.0-4060420250429001",
     "@dcloudio/vite-plugin-uni": "3.0.0-4060420250429001",
     "@vue/runtime-core": "^3.4.21",
+    "sass": "^1.89.2",
     "vite": "5.2.8"
   }
 }

@@ -1,0 +1,18 @@
+{
+    "name": "uni-cms-co",
+    "dependencies": {
+        "uni-config-center": "file:..\/..\/..\/..\/uni-config-center\/uniCloud\/cloudfunctions\/common\/uni-config-center",
+        "uni-sec-check": "file:..\/..\/..\/..\/uni-sec-check\/uniCloud\/cloudfunctions\/common\/uni-sec-check"
+    },
+    "extensions": {
+        "uni-cloud-jql": {}
+    },
+    "cloudfunction-config": {
+        "timeout": 60,
+        "runtime": "Nodejs12"
+    },
+    "origin-plugin-dev-name": "uni-cms",
+    "origin-plugin-version": "1.0.20",
+    "plugin-dev-name": "uni-cms",
+    "plugin-version": "1.0.20"
+}

@@ -1,0 +1,195 @@
+<template>
+    <view class="search-bar">
+        <view :style="{ height: `${navBarHeight}px` }"></view>
+        <view class="search-bar__content" @click="goToSearchPage">
+            <view class="search-bar__left" v-if="!showPlaceholder">
+                <view class="back-icon">
+                    <uni-cms-article-icons type="back" :size="26" color="#333" @click="back"></uni-cms-article-icons>
+                </view>
+            </view>
+            <view class="search-bar__center">
+                <uni-cms-article-icons type="search" :size="18" color="#c0c4cc"></uni-cms-article-icons>
+                <text class="search-bar__placeholder" v-if="showPlaceholder">请输入搜索内容</text>
+                <input
+                        v-else
+                        ref="search-input"
+                        class="search-bar__input"
+                        placeholder="请输入搜索内容"
+                        v-model="searchVal"
+                        confirm-type="search"
+                        :focus="focus"
+                        @confirm="confirm"
+                />
+                <view class="clear-icon" v-if="hasSearchValue" @click="clear">
+                    <uni-cms-article-icons type="closeempty" :size="12" color="#fff"></uni-cms-article-icons>
+                </view>
+            </view>
+            <view class="search-bar__right" v-if="!showPlaceholder">
+                <!--                <uni-cms-article-icons type="scan" :size="20" color="#c0c4cc" @click="scan"></uni-cms-article-icons>-->
+                <text class="search-bar__search-text" @click="confirm">搜索</text>
+            </view>
+        </view>
+    </view>
+</template>
+
+<script lang="uts">
+    // import parseScanResult from "@/uni_modules/uni-cms-article/common/parse-scan-result.uts";
+
+    export default {
+        name: 'search-bar',
+        emits: ['update:modelValue', 'clear', 'confirm'],
+        data() {
+            return {
+                navBarHeight: 44,
+                searchVal: ""
+            }
+        },
+        props: {
+            showPlaceholder: {
+                type: Boolean,
+                default: false
+            },
+            focus: {
+                type: Boolean,
+                default: false
+            },
+            modelValue: {
+                type: String,
+                default: ""
+            }
+        },
+        watch: {
+            searchVal(newValue) {
+                this.$emit('update:modelValue', newValue)
+            },
+            modelValue: {
+                immediate: true,
+                handler(newVal) {
+                    this.searchVal = newVal
+                }
+            },
+        },
+        computed: {
+            hasSearchValue(): boolean {
+                return this.searchVal != ""
+            }
+        },
+        methods: {
+            back() {
+                // 获取当前页面数量
+                const pages = getCurrentPages()
+                // 定义文章列表页的路径
+                const pageUrl = '/uni_modules/uni-cms-article/pages/list/list'
+
+                // 如果当前页面数量大于1，返回上一页
+                if (pages.length > 1) {
+                    uni.navigateBack({})
+                } else { // 否则跳转到文章列表页
+                    uni.redirectTo({
+                        url: pageUrl,
+                        fail: (e: RedirectToFail) => {
+                            // 如果跳转失败，说明当前页面是tabbar页面，需要使用switchTab跳转
+                            if (e.errMsg.indexOf('tabbar') !== -1) {
+                                uni.switchTab({
+                                    url: pageUrl
+                                })
+                            }
+                        }
+                    })
+                }
+            },
+            clear() {
+                this.searchVal = '';
+                (this.$refs['search-input'] as Element).blur()
+                this.$emit('clear')
+            },
+            confirm() {
+                (this.$refs['search-input'] as Element).blur()
+                this.$emit('confirm', this.searchVal)
+            },
+            scan() {
+                // 扫码暂不支持
+                // uni.scanCode({
+                //     onlyFromCamera: true,
+                //     scanType: ["qrCode"],
+                //     success: (e) => parseScanResult(e.result),
+                //     fail: (e) => {
+                //         console.error(e)
+                //     }
+                // })
+            },
+            goToSearchPage() {
+                if (!this.showPlaceholder) return
+
+                uni.navigateTo({
+                    url: '/uni_modules/uni-cms-article/pages/search/search'
+                })
+            },
+            hideKeyboard() {
+                (this.$refs['search-input'] as Element).blur()
+            }
+        }
+    }
+</script>
+
+<style lang="scss">
+  .search-bar {
+    background: #fff;
+
+    &__content {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      padding: 10rpx 20rpx;
+    }
+
+    &__left {
+      margin-left: -20rpx;
+    }
+
+    &__center {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      background: #F8F8F8;
+      padding: 20rpx;
+      margin: 0 20rpx;
+      margin-left: 0;
+      border-radius: 40rpx;
+      flex: 1;
+    }
+
+    &__placeholder {
+      color: #c0c4cc;
+      font-size: 28rpx;
+      margin-left: 10rpx;
+    }
+
+    &__input {
+      margin-left: 10rpx;
+      flex: 1;
+    }
+
+    &__search-text {
+      color: #c0402b;
+      font-size: 28rpx;
+    }
+  }
+
+  .back-icon {
+    padding: 10rpx;
+  }
+
+  .clear-icon {
+    width: 30rpx;
+    height: 30rpx;
+    background: #c0c4cc;
+    border-radius: 15rpx;
+    margin-right: 0;
+    margin-left: 10rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+</style>

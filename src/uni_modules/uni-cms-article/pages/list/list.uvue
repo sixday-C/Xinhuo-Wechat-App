@@ -1,0 +1,33 @@
+<template>
+    <view class="page">
+        <uni-cms-article-search-bar :show-placeholder="true"></uni-cms-article-search-bar>
+        <uni-cms-article-list
+                :collectionList="colList"
+                :refresherEnabled="true"
+                style="flex: 1;"
+        ></uni-cms-article-list>
+    </view>
+</template>
+
+<script lang="uts">
+    const db = uniCloud.databaseForJQL()
+
+    export default {
+        computed: {
+            colList(): any[] {
+                return [
+                    db.collection('uni-cms-articles').where("\"article_status\" == 1").field('thumbnail,title,publish_date,user_id').getTemp(), // 文章集合
+                    db.collection('uni-id-users').field('_id,nickname').getTemp() // 用户集合
+                ]
+            }
+        }
+    }
+</script>
+
+<style scoped lang="scss">
+    .page {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+</style>

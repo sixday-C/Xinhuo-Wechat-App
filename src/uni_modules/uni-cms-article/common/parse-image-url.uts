@@ -1,0 +1,80 @@
+export type ParseImageUrlResult = {
+  src: string
+  source: string
+}
+function parseEditorImage (_blocks: any): UTSJSONObject[] {
+  const images: UTSJSONObject[] = []
+  let blocks: UTSJSONObject[]
+
+  if (!Array.isArray(_blocks)) {
+    blocks = [_blocks as UTSJSONObject] as UTSJSONObject[]
+  } else {
+    blocks = _blocks as UTSJSONObject[]
+  }
+
+  blocks.forEach((block: UTSJSONObject) => {
+    const insert = block.getJSON('insert')
+    const attributes = block.getJSON('attributes')
+    const custom = attributes!.getString('data-custom')
+
+    let parseCustom = custom && custom.split('&') ? custom.split('&').reduce((obj: UTSJSONObject, item: string): UTSJSONObject => {
+      const kv = item.split('=')
+
+      if (kv.length > 1) {
+        obj[kv[0]] = kv[1]
+      }
+
+      return obj
+    }, {} as UTSJSONObject) : {}
+
+    images.push({
+      src: insert!.getString('image'),
+      source: parseCustom.getString('source') != null ? parseCustom.getString('source') : insert!.getString('image')
+    })
+  })
+
+  return images
+}
+
+/**
+ * 解析媒体库/编辑器中的图片
+ * @param images 图片地址
+ * @param type {string} 解析类型 media: 媒体库, editor: 编辑器
+ * @returns {Promise<{src: *, source: *}[]|{src, source: *}[]>}
+ */
+export async function parseImageUrl (images: any, type: string = "media"): Promise<ParseImageUrlResult[] | null> {
+  let imagePaths: string[] = []
+  if (type === "editor") {
+    imagePaths = parseEditorImage(images).map((item: UTSJSONObject): string => item.getString('source')!)
+  } else {
+    if (!Array.isArray(images)) {
+      imagePaths = [images as string] as string[]
+    } else {
+      imagePaths = images
+    }
+  }
+
+  if (imagePaths.length <= 0) return null
+
+  const tcbFiles = imagePaths.filter((item: string): boolean => item.startsWith("cloud://"))
+
+  if (tcbFiles.length > 0) {
+    const res: UniCloudGetTempFileURLResult = await uniCloud.getTempFileURL({
+      fileList: tcbFiles
+    })
+
+    return imagePaths.map((image: string): ParseImageUrlResult => {
+      const file = res.fileList.find((item: UniCloudGetTempFileURLResultItem): boolean => item.fileID === image)
+
+      return {
+        src: file ? file.tempFileURL : image,
+        source: image
+      } as ParseImageUrlResult
+    })
+  } else {
+    return imagePaths.map((image: string): ParseImageUrlResult => ({
+      src: image,
+      source: image
+    } as ParseImageUrlResult))
+  }
+}

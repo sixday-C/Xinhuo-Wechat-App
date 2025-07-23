@@ -1,0 +1,223 @@
+<template>
+  <scroll-view :scroll-y="true" v-if="!loading">
+    <view class="meta">
+      <view class="title">
+        <text class="text">{{ articleDetail.title }}</text>
+      </view>
+      <view class="excerpt">
+        <text class="text">{{ articleDetail.excerpt }}</text>
+      </view>
+      <view class="author">
+        <template v-if="articleDetail.user_id != null">
+          <text class="at">{{ articleDetail.user_id?.nickname ?? '' }}</text>
+          <text class="split">·</text>
+        </template>
+        <text class="date">{{ publishTime(articleDetail.publish_date as number) }}</text>
+      </view>
+    </view>
+
+    <view class="content" v-if="articleDetail.content != null">
+      <template v-for="(block, index) in articleDetail.content" :key="index">
+        <view v-if="block.type == 'mediaVideo'">
+          <video
+            style="width: 300px; height: 200px; margin: 0 auto 20px;"
+            :src="(block.data as UTSJSONObject).getJSON('attributes')!.getString('src')!"
+            :poster="(block.data as UTSJSONObject).getJSON('attributes')!.getString('poster')!"
+          ></video>
+        </view>
+        <view v-if="block.type == 'divider'" class="divider"></view>
+        <view v-if="block.type == 'unlockContent'" class="unlock-content">
+          <button @click="unlockContent">请观看广告后解锁全文</button>
+        </view>
+        <rich-text v-if="block.type == 'rich-text'" :selectable="false" :nodes="block.data" @itemclick="richTextItemClick"></rich-text>
+        <render-image-component v-if="block.type == 'image'" :deltaOp="block.data" @image-preview="onImagePreview"></render-image-component>
+      </template>
+    </view>
+  </scroll-view>
+</template>
+
+<script lang="uts">
+  import translatePublishTime from "@/uni_modules/uni-cms-article/common/publish-time";
+  import RenderImageComponent from '@/uni_modules/uni-cms-article/components/render-article-detail/image.uvue'
+
+  type Author = {
+    _id: string
+    nickname: string
+  }
+  type Content = {
+    type: string
+    data: any
+  }
+  type Article = {
+    _id: string | null
+    title: string | null
+    content: Content[] | null
+    excerpt: string | null
+    publish_date: number | null
+    user_id: Author | null
+    thumbnail: string[] | null
+    content_images: string[] | null
+  }
+
+  const db = uniCloud.databaseForJQL()
+  const articleDBName = 'uni-cms-articles'
+  const userDBName = 'uni-id-users'
+
+  export default {
+    components: {
+      RenderImageComponent
+    },
+    data() {
+      return {
+        loading: true,
+        id: "", // 文章ID
+        title: "", // 文章标题
+        articleDetail: {} as Article, // 文章详情
+        // 广告相关配置
+        adpId: "", // TODO: 请填写广告位ID
+        watchAdUniqueType: "device" // TODO: 观看广告的唯一标识类型，可选值为 user 或者 device，user 表示用户唯一，device 表示设备唯一
+      }
+    },
+    computed: {
+      where(): string {
+        //拼接where条件 查询条件 ,更多详见 ：https://uniapp.dcloud.net.cn/uniCloud/unicloud-db?id=jsquery
+        return `_id =="${this.id}"`
+      },
+      collection(): any[] {
+        return [
+          db.collection(articleDBName).where(this.where).field('user_id,thumbnail,excerpt,publish_date,title,content').getTemp(),
+          db.collection(userDBName).field('_id, nickname').getTemp()
+        ]
+      }
+    },
+    onLoad(event: OnLoadOptions) {
+      if (event.has('id')) {
+        this.id = event.get('id') as string
+        this.load()
+      }
+
+      if (event.has('title')) {
+        uni.setNavigationBarTitle({
+          title: event.get('title') as string
+        })
+      }
+    },
+    methods: {
+      async load (): Promise<void> {
+        uni.showLoading({
+          title: "加载中..."
+        })
+        const articledb = db.collection(articleDBName).where(this.where).field('user_id,thumbnail,excerpt,publish_date,title,content').getTemp()
+        const userdb = db.collection(userDBName).field('_id, nickname').getTemp()
+        const res = await db.collection(articledb, userdb).get()
+
+        this.loadData(res.data)
+        this.loading = false
+        uni.hideLoading()
+      },
+      // 格式化发布时间
+      publishTime(timestamp: number): string {
+        return translatePublishTime(timestamp)
+      },
+      loadData(data: UTSJSONObject[]) {
+        if (data.length <= 0) return
+        const detail = data[0]
+
+        const user_id = detail.getArray<Author>('user_id')!;
+
+        this.articleDetail = {
+          title: detail.getString('title'),
+          content: detail.getArray<Content>('content'),
+          excerpt: detail.getString('excerpt'),
+          publish_date: detail.getNumber('publish_date'),
+          thumbnail: detail.getArray<string>('thumbnail'),
+          user_id: user_id.length > 0 ? user_id[0]: null,
+          content_images: detail.getArray<string>('content_images')
+        } as Article
+
+        this.title = detail.getString('title')!
+
+        uni.setNavigationBarTitle({
+          title: this.title
+        })
+      },
+      unlockContent () {
+        uni.showModal({
+          content: 'uni-app-x 暂不支持观看广告解锁全文',
+          showCancel: false
+        })
+      },
+      richTextItemClick (e: RichTextItemClickEvent) {
+        if (e.detail.href != null) {
+          uni.navigateTo({
+            url: `/uni_modules/uni-cms-article/pages/webview/webview?url=${encodeURIComponent(e.detail.href as string)}`
+          })
+        }
+      },
+      onImagePreview (url: string) {
+        const contentImages = this.articleDetail.content_images != null ? this.articleDetail.content_images: [] as string[]
+
+        uni.previewImage({
+          current: url, // 当前显示图片的http链接
+          urls: contentImages as string[] // 需要预览的图片http链接列表
+        })
+      }
+    }
+  }
+</script>
+
+<style scoped lang="scss">
+  .meta {
+    padding: 20rpx 30rpx 0;
+    position: relative;
+    z-index: 1;
+
+    .title {
+      .text {
+        font-size: 40rpx;
+        line-height: 66rpx;
+        font-weight: bold;
+        color: #333;
+      }
+    }
+
+    .excerpt {
+      margin-top: 10rpx;
+
+      .text {
+        font-size: 26rpx;
+        line-height: 40rpx;
+        color: #999;
+      }
+    }
+
+    .author {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      flex-direction: row;
+      margin-top: 20rpx;
+
+      .at,
+      .split,
+      .date {
+        font-size: 26rpx;
+        color: #ccc;
+      }
+
+      .split {
+        margin: 0 10rpx;
+      }
+    }
+  }
+  .content {
+    margin-top: 40rpx;
+    padding: 0 30rpx 80rpx;
+  }
+  .divider {
+    height: 1px;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.1);
+  }
+</style>
+

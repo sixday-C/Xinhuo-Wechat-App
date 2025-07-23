@@ -1,0 +1,49 @@
+{
+	"bsonType": "object",
+	"required": [
+		"user_id",
+		"trans_id",
+		"content_id"
+	],
+	"permission": {
+		"read": true,
+		"create": true,
+		"update": false,
+		"delete": false
+	},
+	"properties": {
+		"_id": {
+			"description": "存储文档 ID（用户 ID），系统自动生成"
+		},
+		"unique_id": {
+			"bsonType": "string",
+			"description": "用于标识观看广告的唯一标识"
+		},
+		"unique_type": {
+			"bsonType": "string",
+			"description": "观看广告的唯一标识类型；user 用户；device 设备"
+		},
+		"trans_id": {
+			"bsonType": "string",
+			"title": "交易ID",
+			"description": "广告回调传回的交易ID",
+			"label": "内容id",
+			"trim": "both"
+		},
+		"content_id": {
+			"bsonType": "string",
+			"title": "内容id",
+			"description": "内容(文章)ID",
+			"label": "内容id",
+			"trim": "both"
+		},
+		"create_date": {
+			"bsonType": "timestamp",
+			"title": "创建时间",
+			"description": "创建时间",
+			"defaultValue": {
+				"$env": "now"
+			}
+		}
+	}
+}

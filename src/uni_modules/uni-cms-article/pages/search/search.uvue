@@ -1,0 +1,363 @@
+<template>
+  <view class="container">
+    <view class="search">
+      <uni-cms-article-search-bar
+        ref="searchBar"
+        v-model="searchVal"
+        :show-placeholder="false"
+        :focus="true"
+        @clear="showSearchResultPanel = false"
+        @confirm="search"
+      ></uni-cms-article-search-bar>
+    </view>
+    <view class="search-result" v-if="showSearchResultPanel">
+      <uni-cms-article-list
+        ref="articleList"
+        :collectionList="colList"
+        :refresherEnabled="false"
+        loadTime="manual"
+        style="flex: 1;"
+      ></uni-cms-article-list>
+    </view>
+    <template v-else>
+      <view class="panel history-panel" v-if="searchHistory.length > 0">
+        <view class="panel__title">
+          <view class="panel__title-text">
+            <text class="text">搜索历史</text>
+          </view>
+
+          <view class="delete-history-btns" v-if="deleteHistoryLoading">
+            <text class="text" @click="deleteAllSearchHistory">全部删除</text>
+            <text class="text danger" @click="deleteHistoryLoading = false">完成</text>
+          </view>
+          <uni-cms-article-icons
+            class="panel__after-icon"
+            type="trash"
+            :size="18"
+            color="#999"
+            @click="deleteHistoryLoading = true"
+            v-else
+          ></uni-cms-article-icons>
+        </view>
+        <view class="panel__list">
+          <view class="panel__list-item" v-for="text in searchHistory">
+            <text class="text" @click="search(text)">{{text}}</text>
+            <uni-cms-article-icons
+              class="icon"
+              type="closeempty"
+              :size="12"
+              color="#999"
+              v-if="deleteHistoryLoading"
+              @click="deleteSearchHistory(text)"
+            ></uni-cms-article-icons>
+          </view>
+        </view>
+      </view>
+      <unicloud-db ref="udb" #default="{ data, loading, error }" field="content"
+                   collection="opendb-search-hot" orderby="create_date desc,count desc" page-data="replace"
+                   :page-size="10">
+        <view class="panel recommend-panel">
+          <view class="panel__title">
+            <view class="panel__title-text">
+              <text class="text">搜索发现</text>
+              <uni-cms-article-icons
+                class="icon"
+                type="reload"
+                :size="14"
+                color="#999"
+                v-if="!hideSearchRecommend"
+                @click="reLoadSearchRecommend"
+              ></uni-cms-article-icons>
+            </view>
+            <uni-cms-article-icons
+              class="panel__after-icon"
+              :type="hideSearchRecommend ? 'eye-slash': 'eye'"
+              :size="18"
+              color="#999"
+              @click="hideSearchRecommend = !hideSearchRecommend"
+            ></uni-cms-article-icons>
+          </view>
+          <view class="panel__list">
+            <view class="panel__list-tip" v-if="loading">
+              <text class="text">正在加载...</text>
+            </view>
+            <view class="panel__list-tip" v-else-if="error != null">
+              <text class="text">{{error.message}}</text>
+            </view>
+            <view class="panel__list-tip" v-else-if="hideSearchRecommend">
+              <text class="text">当前搜索发现已隐藏</text>
+            </view>
+            <template v-else>
+              <view
+                class="panel__list-item"
+                v-for="(word, index) in data"
+                :key="index"
+                @click="search(word.getString('content')!)"
+              >
+                <text class="text">{{ word.getString('content') }}</text>
+              </view>
+            </template>
+          </view>
+        </view>
+      </unicloud-db>
+    </template>
+  </view>
+</template>
+
+<script lang="uts">
+  type ArticleAuthor = {
+    _id: string
+    nickname: string
+  }
+  type ArticleItem = {
+    _id: string
+    title: string
+    publish_date: number
+    thumbnail: string[]
+    user_id: ArticleAuthor[]
+  }
+
+  const db = uniCloud.databaseForJQL()
+  const searchLogDB = db.collection('opendb-search-log')
+  const cmsArticleDB = db.collection('uni-cms-articles')
+  const uniIdUsersDB = db.collection('uni-id-users')
+  const localSearchHistoryKey = '__local_search_history'; //	本地历史存储字段名
+  const localSearchRecommendHiddenKey = '__local_search_recommend_hidden'; //	本地搜索发现开关字段名
+  const localSearchHistoryMax = 10; //	本地历史存储最大值
+  export default {
+    data() {
+      const localSearchRecommendHidden = uni.getStorageSync(localSearchRecommendHiddenKey)
+
+      return {
+        searchVal: "",
+        searchHistory: [] as string[],
+        searchRecommend: [] as string[],
+        deleteHistoryLoading: false,
+        hideSearchRecommend: (localSearchRecommendHidden == "" ? false : localSearchRecommendHidden) as boolean,
+        showSearchResultPanel: false,
+        searchResult: [] as ArticleItem[]
+      }
+    },
+    watch: {
+      hideSearchRecommend(newValue) {
+        uni.setStorageSync(localSearchRecommendHiddenKey, newValue)
+      }
+    },
+    computed: {
+      hasSearchValue(): boolean {
+        return this.searchVal != ""
+      },
+      where(): string {
+        let where = "\"article_status\" == 1"
+
+        if (this.searchVal != "") {
+          where += `&& /${this.searchVal}/.test(title)`
+        }
+
+        return where
+      },
+      colList(): any[] {
+        // 返回文章和用户列表
+        return [
+          cmsArticleDB.where(this.where).field('thumbnail,title,publish_date,user_id').getTemp(),
+          uniIdUsersDB.field('_id,nickname').getTemp()
+        ]
+      }
+    },
+    mounted() {
+      //	本地历史存储
+      const localSearchHistory = uni.getStorageSync(localSearchHistoryKey)
+      this.searchHistory = (localSearchHistory == "" ? [] as string[] : localSearchHistory) as string[]
+    },
+    methods: {
+      deleteAllSearchHistory() {
+        uni.showModal({
+          title: "确定清空搜索历史吗",
+          confirmText: "删除",
+          success: (res) => {
+            if (res.confirm) {
+              this.deleteSearchHistory(null)
+            }
+          }
+        })
+      },
+      deleteSearchHistory(searchText: string | null) {
+        let history: string[] = []
+        if (searchText != null) {
+          history = this.searchHistory.filter((item: string): boolean => item != searchText)
+        }
+
+        this.searchHistory = history
+        uni.setStorageSync(localSearchHistoryKey, history)
+
+        console.log(history.length, 'history.length')
+        if (history.length <= 0) {
+          this.deleteHistoryLoading = false
+        }
+      },
+      search(searchText: string) {
+        searchText = searchText.trim()
+
+        if (searchText == "" || this.deleteHistoryLoading) return
+          // 隐藏键盘
+          ;(this.$refs['searchBar'] as UniCmsArticleSearchBarComponentPublicInstance)!.hideKeyboard()
+
+        // 保存搜索历史
+        this.setLocalSearchHistory(searchText)
+        // 显示搜索结果Panel
+        this.showSearchResultPanel = true
+        // 搜索
+        this.loadSearchResult(searchText)
+        // 添加搜索记录
+        this.addSearchRecord(searchText)
+      },
+      loadSearchResult(searchText: string) {
+        // 设置查询条件
+        this.searchVal = searchText
+
+        // 延迟0ms后加载数据
+        setTimeout(() => {
+          (this.$refs['articleList'] as UniCmsArticleListComponentPublicInstance)!.reLoadList()
+        }, 0)
+      },
+      addSearchRecord(searchText: string) {
+        const systemInfo = uni.getSystemInfoSync()
+        /*
+            在此处存搜索记录，如果登录则需要存 user_id，若未登录则存device_id
+         */
+        searchLogDB.add({
+          // user_id: device_id,
+          device_id: systemInfo.deviceId,
+          // device_uuid: systemInfo.deviceId,
+          content: searchText,
+          create_date: Date.now()
+        })
+      },
+      setLocalSearchHistory(searchText: string) {
+        const history = this.searchHistory.filter((item: string): boolean => item != searchText)
+
+        history.unshift(searchText)
+
+        if (history.length > localSearchHistoryMax) {
+          history.pop()
+        }
+
+        this.searchHistory = history
+        this.deleteHistoryLoading = false
+        uni.setStorageSync(localSearchHistoryKey, history)
+      },
+      reLoadSearchRecommend() {
+        (this.$refs['udb'] as UniCloudDBElement)!.loadData({
+          clear: true
+        })
+      }
+    }
+  }
+</script>
+
+<style lang="scss">
+  .container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+
+    .search-result {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+  }
+
+  .panel {
+    margin-top: 40rpx;
+    padding: 10rpx 20rpx;
+
+    &__title {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+
+      &-text {
+        flex: 1;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+
+        .text {
+          color: #3e3e3e;
+          font-size: 30rpx;
+          line-height: 36rpx;
+          font-weight: bold;
+        }
+
+        .icon {
+          margin-left: 10rpx;
+        }
+      }
+    }
+
+    &__after-icon {
+      margin-left: 10rpx;
+    }
+
+    &__list {
+      margin-top: 30rpx;
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+
+      &-item {
+        background-color: #f6f6f6;
+        border-radius: 30rpx;
+        padding: 10rpx 20rpx;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        margin-right: 10rpx;
+        margin-bottom: 10rpx;
+
+        .text {
+          font-size: 26rpx;
+          color: #666;
+        }
+
+        .icon {
+          margin-left: 10rpx;
+        }
+      }
+
+      &-tip {
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        flex: 1;
+        margin-top: 20rpx;
+
+        .text {
+          font-size: 26rpx;
+          color: #808080;
+        }
+      }
+    }
+  }
+
+  .delete-history-btns {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+
+    .text {
+      color: #666;
+      font-size: 22rpx;
+      margin-left: 20rpx;
+
+      &.danger {
+        color: #c0402b;
+      }
+    }
+  }
+
+</style>
