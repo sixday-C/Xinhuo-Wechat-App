@@ -97,7 +97,7 @@ export default {
       this.result = null
 
       // 模拟保存操作（如果需要云函数调用，可以取消下面的注释）
-      /*
+      
       const addUser = uniCloud.importObject('add-user-demo-1')
       try {
         const response = await addUser.addUser({
@@ -116,13 +116,13 @@ export default {
       } finally {
         this.loading = false
       }
-      */
+     
 
       // 临时本地模拟保存
-      setTimeout(() => {
-        this.result = { success: true, message: '保存成功' }
-        this.loading = false
-      }, 800)
+      // setTimeout(() => {
+      //   this.result = { success: true, message: '保存成功' }
+      //   this.loading = false
+      // }, 800)
     },
 
     viewHistoryDetail(item) {
