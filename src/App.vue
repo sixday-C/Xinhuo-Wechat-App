@@ -2,7 +2,14 @@
 
 export default {
   onLaunch: function () {
-    
+    // #ifdef H5
+        const token = uni.getStorageSync('admin_token');
+        if (!token) {
+          uni.reLaunch({ url: '/pages-admin/login/login' });
+        } else {
+          uni.reLaunch({ url: '/pages-admin/indad/indad' });
+        }
+        // #endif
     console.log('App Launch')
   },
   onShow: function () {

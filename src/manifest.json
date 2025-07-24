@@ -5,6 +5,26 @@
     "versionName" : "1.0.0",
     "versionCode" : "100",
     "transformPx" : false,
+	"h5": {
+	  "publicPath": "/",
+	  "devServer": {
+	    "port": 8080,
+	    "https": false
+	  },
+	  "networkTimeout": {
+	    "request": 60000,
+	    "connectSocket": 60000,
+	    "uploadFile": 60000,
+	    "downloadFile": 60000
+	  },
+	  // —— 在这里加上 domains 配置 ——
+	  "domains": {
+	    "https": [
+	      "env-00jxtsjrq0f2.normal.cloudstatic.cn"
+	    ]
+	  }
+	},
+
     /* 5+App特有相关 */
     "app-plus" : {
         "usingComponents" : true,
@@ -68,5 +88,11 @@
     "uniStatistics" : {
         "enable" : false
     },
-    "vueVersion" : "3"
+    "vueVersion" : "3",
+    "h5" : {
+        "devServer" : {
+            "port" : "https://env-00jxtsjrq0f2.normal.cloudstatic.cn",
+            "https" : true
+        }
+    }
 }

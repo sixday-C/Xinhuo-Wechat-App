@@ -1,0 +1,7 @@
+{
+  "name": "add-report-demo",
+  "dependencies": {},
+  "extensions": {
+    "uni-cloud-jql": {}
+  }
+}

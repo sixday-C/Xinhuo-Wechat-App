@@ -1,0 +1,7 @@
+{
+  "name": "get-users",
+  "dependencies": {},
+  "extensions": {
+    "uni-cloud-jql": {}
+  }
+}

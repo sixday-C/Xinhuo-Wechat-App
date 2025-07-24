@@ -1,0 +1,7 @@
+{
+  "name": "download_url",
+  "dependencies": {},
+  "extensions": {
+    "uni-cloud-jql": {}
+  }
+}
