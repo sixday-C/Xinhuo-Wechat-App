@@ -43,6 +43,11 @@
 				<text class="info-label">问题描述</text>
 				<text class="info-value">{{ detail.description || '具体问题描述内容...' }}</text>
 			</view>
+			<!-- 处理备注信息 -->
+			<view v-if="detail.processingNotes" class="info-item processing-notes">
+				<text class="info-label">处理备注</text>
+				<text class="info-value notes-text">{{ detail.processingNotes }}</text>
+			</view>
 		</view>
 		<!-- 图片展示区域 -->
 		<view v-if="detail.imageUrls && detail.imageUrls.length > 0" class="detail-images">
@@ -512,5 +517,20 @@ export default {
 	height: 180rpx;
 	border-radius: 8rpx;
 	object-fit: cover;
+}
+
+/* 处理备注样式 */
+.processing-notes {
+	background-color: #f8f9fa;
+	border-left: 4rpx solid #4cd964;
+	margin: 20rpx -10rpx;
+	padding: 20rpx 15rpx;
+	border-radius: 8rpx;
+}
+
+.notes-text {
+	color: #2c3e50;
+	font-weight: 500;
+	line-height: 1.6;
 }
 </style> 
