@@ -21,44 +21,112 @@
 				<text>{{ error }}</text>
 			</view>
 
-			<!-- 问题详情卡片 -->
+			<!-- 公告详情卡片 -->
 			<view v-if="issueDetails && !isLoading" class="detail-card">
-				<!-- 标题 -->
+				<!-- 标题和标识 -->
 				<view class="detail-header">
-					<text class="header-icon">#</text>
+					<view class="header-badges" v-if="issueDetails.is_top || issueDetails.is_important">
+						<view v-if="issueDetails.is_top" class="badge badge-top">置顶</view>
+						<view v-if="issueDetails.is_important" class="badge badge-important">重要</view>
+					</view>
+					<view class="header-type">
+						<text class="type-icon">{{ getTypeIcon(issueDetails.notice_type) }}</text>
+						<text class="type-text">{{ getTypeText(issueDetails.notice_type) }}</text>
+					</view>
 					<text class="header-title">{{ issueDetails.title }}</text>
 				</view>
 
-				<!-- 基本信息 -->
-				<view class="info-section">
-					<view class="info-line">
-						<text class="info-icon">🔥</text>
-						<text class="info-label">查看次数：</text>
-						<text class="info-value">{{ issueDetails.view_count || 0 }} 次</text>
+				<!-- 发布信息 -->
+				<view class="publish-info">
+					<view class="publisher">
+						<text class="publisher-icon">👤</text>
+						<text class="publisher-name">{{ issueDetails.publisher_name || '系统管理员' }}</text>
+					</view>
+					<view class="publish-time">
+						<text class="time-icon">⏰</text>
+						<text class="time-text">{{ issueDetails.formatted_publish_time || issueDetails.formatted_create_time }}</text>
 					</view>
 				</view>
 
-				<!-- 详细描述 -->
+				<!-- 封面图片 -->
+				<view v-if="issueDetails.cover_image_url" class="cover-section">
+					<image 
+						class="cover-image" 
+						:src="issueDetails.cover_image_url" 
+						mode="aspectFill"
+						@click="previewImage(issueDetails.cover_image_url)"
+					></image>
+				</view>
+
+				<!-- 摘要 -->
+				<view v-if="issueDetails.summary" class="summary-section">
+					<view class="section-title">摘要</view>
+					<text class="summary-text">{{ issueDetails.summary }}</text>
+				</view>
+
+				<!-- 详细内容 -->
 				<view class="content-section">
-					<view class="content-title">详细情况</view>
+					<view class="section-title">详细内容</view>
 					<view class="content-body">
-						<text>{{ issueDetails.content }}</text>
+						<text class="content-text">{{ issueDetails.content }}</text>
 					</view>
 				</view>
 
 				<!-- 相关图片 -->
-				<view class="image-gallery" v-if="issueDetails.images && issueDetails.images.length > 0">
-					<view class="gallery-title">相关图片</view>
-					<view class="image-list">
-						<view class="image-wrapper" v-for="(image, index) in issueDetails.images" :key="index">
+				<view class="image-gallery" v-if="issueDetails.http_image_urls && issueDetails.http_image_urls.length > 0">
+					<view class="section-title">相关图片</view>
+					<view class="image-grid">
+						<view class="image-wrapper" v-for="(imageUrl, index) in issueDetails.http_image_urls" :key="index">
 							<image 
-								class="issue-image" 
-								:src="image.url || image" 
+								class="gallery-image" 
+								:src="imageUrl" 
 								mode="aspectFill"
-								@click="previewImage(image.url || image)"
+								@click="previewImages(imageUrl)"
 							></image>
 						</view>
 					</view>
+				</view>
+
+				<!-- 附件 -->
+				<view v-if="issueDetails.processed_attachments && issueDetails.processed_attachments.length > 0" class="attachment-section">
+					<view class="section-title">附件</view>
+					<view class="attachment-list">
+						<view class="attachment-item" v-for="(attachment, index) in issueDetails.processed_attachments" :key="index">
+							<text class="attachment-icon">📎</text>
+							<text class="attachment-name">{{ attachment.file_name || '附件文件' }}</text>
+							<text class="attachment-size" v-if="attachment.file_size">{{ formatFileSize(attachment.file_size) }}</text>
+						</view>
+					</view>
+				</view>
+
+				<!-- 标签 -->
+				<view v-if="issueDetails.tags && issueDetails.tags.length > 0" class="tags-section">
+					<view class="section-title">标签</view>
+					<view class="tags-list">
+						<text class="tag" v-for="(tag, index) in issueDetails.tags" :key="index">{{ tag }}</text>
+					</view>
+				</view>
+
+				<!-- 统计信息 -->
+				<view class="stats-section">
+					<view class="stats-row">
+						<view class="stat-item">
+							<text class="stat-icon">👁️</text>
+							<text class="stat-label">查看</text>
+							<text class="stat-value">{{ issueDetails.view_count || 0 }}</text>
+						</view>
+						<view class="stat-item" @click="toggleLike">
+							<text class="stat-icon" :class="{ 'liked': isLiked }">❤️</text>
+							<text class="stat-label">点赞</text>
+							<text class="stat-value">{{ currentLikeCount }}</text>
+						</view>
+					</view>
+				</view>
+
+				<!-- 过期时间提醒 -->
+				<view v-if="issueDetails.expire_time" class="expire-notice">
+					<text class="expire-icon">⚠️</text>
+					<text class="expire-text">此公告将于 {{ formatTime(issueDetails.expire_time) }} 过期</text>
 				</view>
 			</view>
 		</view>
@@ -75,6 +143,16 @@
 				issueDetails: null,
 				isLoading: true,
 				error: null,
+				isLiked: false,
+				currentLikeCount: 0,
+				noticeTypes: [
+					{ value: 'urgent', text: '紧急通知' },
+					{ value: 'maintenance', text: '维修公告' },
+					{ value: 'activity', text: '活动通知' },
+					{ value: 'policy', text: '政策通知' },
+					{ value: 'general', text: '一般公告' },
+					{ value: 'announcement', text: '重要公告' }
+				]
 			};
 		},
 		onLoad(options) {
@@ -128,6 +206,10 @@
 					}
 					
 					this.issueDetails = res.data;
+					this.currentLikeCount = res.data.like_count || 0;
+					
+					// 检查用户是否已点赞（这里可以从本地存储或服务器获取）
+					this.checkLikeStatus();
 
 				} catch (e) {
 					console.error("fetchIssueDetails error:", e);
@@ -136,13 +218,104 @@
 					this.isLoading = false;
 				}
 			},
+
+			// 检查点赞状态
+			checkLikeStatus() {
+				const likedNotices = uni.getStorageSync('liked_notices') || [];
+				this.isLiked = likedNotices.includes(this.issueId);
+			},
+
+			// 切换点赞状态
+			async toggleLike() {
+				try {
+					const action = this.isLiked ? 'unlike' : 'like';
+					const res = await noticeDemo.likeNotice({
+						id: this.issueId,
+						action: action
+					});
+
+					if (res.code === 0) {
+						this.isLiked = !this.isLiked;
+						this.currentLikeCount += this.isLiked ? 1 : -1;
+						
+						// 更新本地存储
+						let likedNotices = uni.getStorageSync('liked_notices') || [];
+						if (this.isLiked) {
+							likedNotices.push(this.issueId);
+						} else {
+							likedNotices = likedNotices.filter(id => id !== this.issueId);
+						}
+						uni.setStorageSync('liked_notices', likedNotices);
+						
+						uni.showToast({
+							title: this.isLiked ? '点赞成功' : '取消点赞',
+							icon: 'success'
+						});
+					}
+				} catch (e) {
+					console.error('点赞操作失败:', e);
+					uni.showToast({
+						title: '操作失败，请稍后重试',
+						icon: 'none'
+					});
+				}
+			},
 			
+			// 预览单张图片
 			previewImage(currentUrl) {
-				const urls = this.issueDetails.images.map(img => (typeof img === 'object' ? img.url : img));
+				uni.previewImage({
+					current: currentUrl,
+					urls: [currentUrl]
+				});
+			},
+
+			// 预览多张图片
+			previewImages(currentUrl) {
+				const urls = this.issueDetails.http_image_urls || [];
 				uni.previewImage({
 					current: currentUrl,
 					urls: urls
 				});
+			},
+
+			// 格式化文件大小
+			formatFileSize(bytes) {
+				if (bytes === 0) return '0 B';
+				const k = 1024;
+				const sizes = ['B', 'KB', 'MB', 'GB'];
+				const i = Math.floor(Math.log(bytes) / Math.log(k));
+				return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+			},
+
+			// 格式化时间
+			formatTime(timestamp) {
+				if (!timestamp) return '';
+				const date = new Date(timestamp);
+				const year = date.getFullYear();
+				const month = ('0' + (date.getMonth() + 1)).slice(-2);
+				const day = ('0' + date.getDate()).slice(-2);
+				const hour = ('0' + date.getHours()).slice(-2);
+				const minute = ('0' + date.getMinutes()).slice(-2);
+				return `${year}-${month}-${day} ${hour}:${minute}`;
+			},
+
+			// 获取类型图标
+			getTypeIcon(type) {
+				const iconMap = {
+					urgent: '🚨',
+					maintenance: '🔧',
+					activity: '🎉',
+					policy: '📋',
+					general: '📝',
+					announcement: '📢'
+				};
+				return iconMap[type] || '📝';
+			},
+
+			// 获取类型文本
+			getTypeText(type) {
+				const typeObj = this.noticeTypes.find(t => t.value === type);
+				return typeObj ? typeObj.text : '一般公告';
 			},
 
 			goBack() {
@@ -213,90 +386,267 @@
 	.detail-card {
 		background-color: #ffffff;
 		border-radius: 16rpx;
-		padding: 30rpx;
+		padding: 0;
+		overflow: hidden;
 	}
+	
+	/* 头部样式 */
 	.detail-header {
+		padding: 30rpx;
+		border-bottom: 1px solid #f0f0f0;
+		position: relative;
+	}
+	.header-badges {
+		position: absolute;
+		top: 20rpx;
+		right: 20rpx;
 		display: flex;
-		align-items: flex-start;
-		padding-bottom: 25rpx;
-		border-bottom: 1px solid #f0f0f0;
+		gap: 10rpx;
+		z-index: 2;
 	}
-	.header-icon {
-		font-size: 36rpx;
-		color: #007AFF;
+	.badge {
+		padding: 6rpx 12rpx;
+		border-radius: 12rpx;
+		font-size: 20rpx;
+		color: #ffffff;
 		font-weight: bold;
-		margin-right: 20rpx;
-		line-height: 1.4;
 	}
-	.header-title {
-		font-size: 38rpx;
-		font-weight: bold;
-		color: #333;
-		flex: 1;
-		line-height: 1.4;
+	.badge-top {
+		background-color: #ff3333;
 	}
-	.info-section {
-		padding: 25rpx 0;
-		border-bottom: 1px solid #f0f0f0;
+	.badge-important {
+		background-color: #ff9900;
 	}
-	.info-line {
+	.header-type {
 		display: flex;
 		align-items: center;
-		margin-bottom: 20rpx;
+		margin-bottom: 15rpx;
+	}
+	.type-icon {
 		font-size: 28rpx;
+		margin-right: 10rpx;
 	}
-	.info-line:last-child {
-		margin-bottom: 0;
+	.type-text {
+		font-size: 24rpx;
+		color: #007AFF;
+		background-color: #f0f8ff;
+		padding: 6rpx 12rpx;
+		border-radius: 12rpx;
+		font-weight: bold;
 	}
-	.info-icon {
-		margin-right: 15rpx;
+	.header-title {
+		font-size: 36rpx;
+		font-weight: bold;
+		color: #333;
+		line-height: 1.4;
+		margin-right: 120rpx; /* 为徽章预留空间 */
 	}
-	.info-label {
+	
+	/* 发布信息样式 */
+	.publish-info {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 20rpx 30rpx;
+		background-color: #f8f9fa;
+		border-bottom: 1px solid #f0f0f0;
+	}
+	.publisher, .publish-time {
+		display: flex;
+		align-items: center;
+		gap: 8rpx;
+	}
+	.publisher-icon, .time-icon {
+		font-size: 20rpx;
 		color: #666;
 	}
-	.info-value {
-		color: #333;
-		font-weight: 500;
+	.publisher-name, .time-text {
+		font-size: 24rpx;
+		color: #666;
 	}
-	.content-section {
-		padding-top: 25rpx;
+	
+	/* 封面图片样式 */
+	.cover-section {
+		width: 100%;
+		height: 400rpx;
 	}
-	.content-title {
+	.cover-image {
+		width: 100%;
+		height: 100%;
+		background-color: #f0f0f0;
+	}
+	
+	/* 通用节标题 */
+	.section-title {
 		font-size: 32rpx;
 		font-weight: bold;
 		color: #333;
 		margin-bottom: 20rpx;
 	}
+	
+	/* 摘要样式 */
+	.summary-section {
+		padding: 25rpx 30rpx;
+		border-bottom: 1px solid #f0f0f0;
+	}
+	.summary-text {
+		font-size: 28rpx;
+		color: #666;
+		line-height: 1.6;
+		background-color: #f8f9fa;
+		padding: 20rpx;
+		border-radius: 12rpx;
+		border-left: 4rpx solid #007AFF;
+	}
+	
+	/* 内容样式 */
+	.content-section {
+		padding: 25rpx 30rpx;
+		border-bottom: 1px solid #f0f0f0;
+	}
 	.content-body {
+		margin-top: 10rpx;
+	}
+	.content-text {
 		font-size: 30rpx;
-		color: #555;
+		color: #333;
 		line-height: 1.8;
 		text-align: justify;
 	}
+	
+	/* 图片画廊样式 */
 	.image-gallery {
-		padding-top: 25rpx;
-		margin-top: 25rpx;
-		border-top: 1px solid #f0f0f0;
+		padding: 25rpx 30rpx;
+		border-bottom: 1px solid #f0f0f0;
 	}
-	.gallery-title {
-		font-size: 32rpx;
-		font-weight: bold;
-		color: #333;
-		margin-bottom: 20rpx;
-	}
-	.image-list {
+	.image-grid {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 15rpx;
+		margin-top: 10rpx;
 	}
 	.image-wrapper {
 		width: calc(33.333% - 10rpx);
 		aspect-ratio: 1 / 1;
 	}
-	.issue-image {
+	.gallery-image {
 		width: 100%;
 		height: 100%;
-		border-radius: 8rpx;
+		border-radius: 12rpx;
 		background-color: #f0f0f0;
+	}
+	
+	/* 附件样式 */
+	.attachment-section {
+		padding: 25rpx 30rpx;
+		border-bottom: 1px solid #f0f0f0;
+	}
+	.attachment-list {
+		margin-top: 10rpx;
+	}
+	.attachment-item {
+		display: flex;
+		align-items: center;
+		padding: 15rpx 20rpx;
+		background-color: #f8f9fa;
+		border-radius: 12rpx;
+		margin-bottom: 15rpx;
+		gap: 15rpx;
+	}
+	.attachment-item:last-child {
+		margin-bottom: 0;
+	}
+	.attachment-icon {
+		font-size: 24rpx;
+		color: #666;
+	}
+	.attachment-name {
+		flex: 1;
+		font-size: 26rpx;
+		color: #333;
+	}
+	.attachment-size {
+		font-size: 22rpx;
+		color: #999;
+	}
+	
+	/* 标签样式 */
+	.tags-section {
+		padding: 25rpx 30rpx;
+		border-bottom: 1px solid #f0f0f0;
+	}
+	.tags-list {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 12rpx;
+		margin-top: 10rpx;
+	}
+	.tag {
+		padding: 8rpx 16rpx;
+		background-color: #e7f3ff;
+		color: #007AFF;
+		border-radius: 16rpx;
+		font-size: 24rpx;
+		font-weight: 500;
+	}
+	
+	/* 统计信息样式 */
+	.stats-section {
+		padding: 25rpx 30rpx;
+		border-bottom: 1px solid #f0f0f0;
+	}
+	.stats-row {
+		display: flex;
+		justify-content: space-around;
+		margin-top: 10rpx;
+	}
+	.stat-item {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 8rpx;
+		padding: 15rpx;
+		border-radius: 12rpx;
+		min-width: 120rpx;
+		transition: background-color 0.3s;
+	}
+	.stat-item:active {
+		background-color: #f0f0f0;
+	}
+	.stat-icon {
+		font-size: 28rpx;
+		transition: transform 0.3s;
+	}
+	.stat-icon.liked {
+		color: #ff3333;
+		transform: scale(1.1);
+	}
+	.stat-label {
+		font-size: 22rpx;
+		color: #666;
+	}
+	.stat-value {
+		font-size: 26rpx;
+		color: #333;
+		font-weight: bold;
+	}
+	
+	/* 过期提醒样式 */
+	.expire-notice {
+		display: flex;
+		align-items: center;
+		gap: 12rpx;
+		padding: 20rpx 30rpx;
+		background-color: #fff3cd;
+		border-left: 4rpx solid #ffc107;
+	}
+	.expire-icon {
+		font-size: 24rpx;
+		color: #856404;
+	}
+	.expire-text {
+		font-size: 26rpx;
+		color: #856404;
+		flex: 1;
 	}
 </style>
