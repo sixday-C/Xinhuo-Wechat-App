@@ -20,7 +20,7 @@ module.exports = {
             }
 
             // 查询All_Report表中该用户的所有记录 (注意表名需要与数据库一致)
-            const allReportCol = db.collection('ALL_Report'); // 使用与add-report-demo一致的表名
+            const allReportCol = db.collection('All_Report'); // 统一使用All_Report
             const bookingCol = db.collection('booking');
 
             console.log('开始查询用户历史记录，手机号：', phone);

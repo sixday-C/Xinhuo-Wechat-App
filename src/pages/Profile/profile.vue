@@ -32,13 +32,23 @@
     <view class="section-card">
       <view class="section-title">历史记录</view>
       <view class="history-list">
-        <view v-if="historyList.length === 0" class="empty-history">
-          <text>暂无上报记录</text>
+        <view v-if="loadingHistory" class="loading-history">
+          <text>加载中...</text>
         </view>
-        <view v-for="item in historyList" :key="item.id" class="history-item" @click="viewHistoryDetail(item)">
+        <view v-else-if="historyList.length === 0" class="empty-history">
+          <text>暂无历史记录</text>
+        </view>
+        <view class="history-item" v-for="item in historyList" :key="item.id" @click="viewHistoryDetail(item)">
           <view class="item-content">
             <text class="item-title">{{ item.title }}</text>
             <text class="item-date">{{ item.date }}</text>
+            <text v-if="item.category" class="item-category">{{ item.category }}</text>
+            <!-- 自定义进度条 -->
+            <view class="progress-container">
+              <view class="progress-bar">
+                <view class="progress-fill" :style="{width: item.progress + '%', backgroundColor: getProgressColor(item.status)}"></view>
+              </view>
+            </view>
           </view>
           <view class="item-status" :class="{'status-processed': item.status === '已处理'}">
             {{ item.status }}
@@ -57,20 +67,21 @@ export default {
       userInfo: { phone: '', name: '', address: '' },
       loading: false,
       result: null,
-      historyList: []
+      // 历史记录
+      historyList: [],
+      loadingHistory: false
     }
   },
-  async onshow(){
-	  await this.fetchUserInfo();
-  },
-  async onLoad() {
-    // 未登录跳回登录页
-    if (!uni.getStorageSync('is_logged_in')) {
-      uni.reLaunch({ url: '/pages/Login/Login' });
-      return;
+  onLoad() {
+    // 页面加载时读取存储的用户信息
+    const storedUserInfo = uni.getStorageSync('userInfo');
+    if (storedUserInfo) {
+      this.userInfo = storedUserInfo;
+      // 如果有用户信息，加载历史记录
+      if (storedUserInfo.phone) {
+        this.loadHistoryList();
+      }
     }
-    
-    await this.fetchHistory();
   },
   methods: {
     // 获取用户信息
@@ -92,47 +103,92 @@ export default {
     },
     // 更新用户信息（仅更新姓名和地址，不修改手机号）
     async saveInfo() {
-      const { name, address } = this.userInfo;
-      if (!name || !address) {
-        uni.showToast({ title: '请填写完整信息', icon: 'none' });
-        return;
+      // 表单校验
+      const { phone, name, address } = this.userInfo
+      if (!phone || !name || !address) {
+        return uni.showToast({ title: '请填写完整的居民信息', icon: 'none' })
       }
-      this.loading = true;
+      uni.setStorageSync('userInfo', this.userInfo);
+      this.loading = true
+      this.result = null
+
+      // 模拟保存操作（如果需要云函数调用，可以取消下面的注释）
+      
+      const addUser = uniCloud.importObject('add-user-demo-1')
       try {
-        const db = uniCloud.database();
-        const userId = uni.getStorageSync('current_user_id');
-        const { updated } = await db.collection('demo-user').doc(userId)
-          .update({ name, address });
-        if (updated > 0) {
-          this.result = { success: true, message: '更新成功' };
+        const response = await addUser.addUser({
+          phone,
+          name,
+          address
+        })
+
+        if (response.code === 200) {
+          this.result = { success: true, message: '保存成功' }
         } else {
-          this.result = { success: false, message: '未做任何修改' };
+          this.result = { success: false, message: response.message || '保存失败' }
         }
       } catch (e) {
-        this.result = { success: false, message: e.message };
+        this.result = { success: false, message: e.message || '请求异常' }
       } finally {
-        this.loading = false;
+        this.loading = false
       }
+     
+
+      // 临时本地模拟保存
+      // setTimeout(() => {
+      //   this.result = { success: true, message: '保存成功' }
+      //   this.loading = false
+      // }, 800)
     },
-    // 退出登录
-    logout() {
-      uni.clearStorageSync();
-      uni.reLaunch({ url: '/pages/Login/Login' });
-    },
+
     viewHistoryDetail(item) {
-      const params = {
-        id: item.id,
-        title: encodeURIComponent(item.title),
-        date: item.date,
-        status: item.status,
-        progress: item.progress || 0,
-        type: '设施维修',
-        location: '小区公共区域'
-      };
-      const queryString = Object.keys(params)
-        .map(key => `${key}=${params[key]}`)
-        .join('&');
-      uni.navigateTo({ url: `/pages/Profile/history-detail?${queryString}` });
+      // 跳转到详情页，传递记录ID
+      uni.navigateTo({
+        url: `/pages/Profile/history-detail?id=${item.id}&type=${item.type || 'report'}`
+      });
+    },
+    // 根据状态获取进度条颜色
+    getProgressColor(status) {
+      if (status === '已处理') {
+        return '#4cd964'; // 绿色，与已处理状态文字颜色一致
+      } else if (status === '处理中') {
+        return '#ff9900'; // 橙色，与处理中状态文字颜色一致
+      }
+      return '#007AFF'; // 默认蓝色
+    },
+
+    // 加载历史记录
+    async loadHistoryList() {
+      if (!this.userInfo.phone) {
+        return;
+      }
+
+      this.loadingHistory = true;
+      
+      try {
+        const getUserHistory = uniCloud.importObject('getUserHistory');
+        const response = await getUserHistory.getUserHistory({
+          phone: this.userInfo.phone
+        });
+
+        if (response.code === 200) {
+          this.historyList = response.data || [];
+        } else {
+          console.error('获取历史记录失败：', response.message);
+          uni.showToast({
+            title: response.message || '获取历史记录失败',
+            icon: 'none'
+          });
+        }
+      } catch (e) {
+        console.error('获取历史记录异常：', e);
+        uni.showToast({
+          title: '网络异常，请稍后重试',
+          icon: 'none'
+        });
+      } finally {
+        this.loadingHistory = false;
+      }
     }
   }
 }
@@ -189,7 +245,7 @@ export default {
 		background-color: #0056b3;
 	}
 	
-	.empty-history {
+	.empty-history, .loading-history {
 		text-align: center;
 		color: #999;
 		padding: 40rpx 0;
@@ -225,6 +281,17 @@ export default {
 	.item-date {
 		font-size: 24rpx;
 		color: #999;
+		margin-bottom: 5rpx;
+	}
+
+	.item-category {
+		font-size: 22rpx;
+		color: #007AFF;
+		background-color: #f0f8ff;
+		padding: 2rpx 8rpx;
+		border-radius: 8rpx;
+		margin-bottom: 5rpx;
+		display: inline-block;
 	}
 
 	.item-status {
@@ -262,5 +329,19 @@ export default {
 		height: 100%;
 		border-radius: 4rpx;
 		transition: width 0.3s ease;
+	}
+
+	/* 结果显示样式 */
+	.result {
+		margin-top: 20rpx;
+		text-align: center;
+	}
+
+	.result .success {
+		color: #4cd964;
+	}
+
+	.result .error {
+		color: #ff3333;
 	}
 </style>

@@ -6,7 +6,7 @@
 				<text class="back-icon">‹</text>
 				<text>返回</text>
 			</view>
-			<view class="nav-title">问题详情</view>
+			<view class="nav-title">公告详情</view>
 		</view>
 
 		<!-- 页面内容容器 -->
@@ -21,49 +21,112 @@
 				<text>{{ error }}</text>
 			</view>
 
-			<!-- 问题详情卡片 -->
+			<!-- 公告详情卡片 -->
 			<view v-if="issueDetails && !isLoading" class="detail-card">
-				<!-- 标题 -->
+				<!-- 标题和标识 -->
 				<view class="detail-header">
-					<text class="header-icon">#</text>
-					<text class="header-title">{{ issueDetails.topic }}</text>
+					<view class="header-badges" v-if="issueDetails.is_top || issueDetails.is_important">
+						<view v-if="issueDetails.is_top" class="badge badge-top">置顶</view>
+						<view v-if="issueDetails.is_important" class="badge badge-important">重要</view>
+					</view>
+					<view class="header-type">
+						<text class="type-icon">{{ getTypeIcon(issueDetails.notice_type) }}</text>
+						<text class="type-text">{{ getTypeText(issueDetails.notice_type) }}</text>
+					</view>
+					<text class="header-title">{{ issueDetails.title }}</text>
 				</view>
 
-				<!-- 基本信息 -->
-				<view class="info-section">
-					<view class="info-line">
-						<text class="info-icon">📍</text>
-						<text class="info-label">影响地点：</text>
-						<text class="info-value">{{ issueDetails.location }}</text>
+				<!-- 发布信息 -->
+				<view class="publish-info">
+					<view class="publisher">
+						<text class="publisher-icon">👤</text>
+						<text class="publisher-name">{{ issueDetails.publisher_name || '系统管理员' }}</text>
 					</view>
-					<view class="info-line">
-						<text class="info-icon">🔥</text>
-						<text class="info-label">提及次数：</text>
-						<text class="info-value">{{ issueDetails.mentions }} 次</text>
+					<view class="publish-time">
+						<text class="time-icon">⏰</text>
+						<text class="time-text">{{ issueDetails.formatted_publish_time || issueDetails.formatted_create_time }}</text>
 					</view>
 				</view>
 
-				<!-- 详细描述 -->
+				<!-- 封面图片 -->
+				<view v-if="issueDetails.cover_image_url" class="cover-section">
+					<image 
+						class="cover-image" 
+						:src="issueDetails.cover_image_url" 
+						mode="aspectFill"
+						@click="previewImage(issueDetails.cover_image_url)"
+					></image>
+				</view>
+
+				<!-- 摘要 -->
+				<view v-if="issueDetails.summary" class="summary-section">
+					<view class="section-title">摘要</view>
+					<text class="summary-text">{{ issueDetails.summary }}</text>
+				</view>
+
+				<!-- 详细内容 -->
 				<view class="content-section">
-					<view class="content-title">详细情况</view>
+					<view class="section-title">详细内容</view>
 					<view class="content-body">
-						<text>{{ issueDetails.content }}</text>
+						<text class="content-text">{{ issueDetails.content }}</text>
 					</view>
 				</view>
 
-				<!-- V2 新增: 相关图片 -->
-				<view class="image-gallery" v-if="issueDetails.images && issueDetails.images.length > 0">
-					<view class="gallery-title">相关图片</view>
-					<view class="image-list">
-						<view class="image-wrapper" v-for="image in issueDetails.images" :key="image.id">
+				<!-- 相关图片 -->
+				<view class="image-gallery" v-if="issueDetails.http_image_urls && issueDetails.http_image_urls.length > 0">
+					<view class="section-title">相关图片</view>
+					<view class="image-grid">
+						<view class="image-wrapper" v-for="(imageUrl, index) in issueDetails.http_image_urls" :key="index">
 							<image 
-								class="issue-image" 
-								:src="image.url" 
+								class="gallery-image" 
+								:src="imageUrl" 
 								mode="aspectFill"
-								@click="previewImage(image.url)"
+								@click="previewImages(imageUrl)"
 							></image>
 						</view>
 					</view>
+				</view>
+
+				<!-- 附件 -->
+				<view v-if="issueDetails.processed_attachments && issueDetails.processed_attachments.length > 0" class="attachment-section">
+					<view class="section-title">附件</view>
+					<view class="attachment-list">
+						<view class="attachment-item" v-for="(attachment, index) in issueDetails.processed_attachments" :key="index">
+							<text class="attachment-icon">📎</text>
+							<text class="attachment-name">{{ attachment.file_name || '附件文件' }}</text>
+							<text class="attachment-size" v-if="attachment.file_size">{{ formatFileSize(attachment.file_size) }}</text>
+						</view>
+					</view>
+				</view>
+
+				<!-- 标签 -->
+				<view v-if="issueDetails.tags && issueDetails.tags.length > 0" class="tags-section">
+					<view class="section-title">标签</view>
+					<view class="tags-list">
+						<text class="tag" v-for="(tag, index) in issueDetails.tags" :key="index">{{ tag }}</text>
+					</view>
+				</view>
+
+				<!-- 统计信息 -->
+				<view class="stats-section">
+					<view class="stats-row">
+						<view class="stat-item">
+							<text class="stat-icon">👁️</text>
+							<text class="stat-label">查看</text>
+							<text class="stat-value">{{ issueDetails.view_count || 0 }}</text>
+						</view>
+						<view class="stat-item" @click="toggleLike">
+							<text class="stat-icon" :class="{ 'liked': isLiked }">❤️</text>
+							<text class="stat-label">点赞</text>
+							<text class="stat-value">{{ currentLikeCount }}</text>
+						</view>
+					</view>
+				</view>
+
+				<!-- 过期时间提醒 -->
+				<view v-if="issueDetails.expire_time" class="expire-notice">
+					<text class="expire-icon">⚠️</text>
+					<text class="expire-text">此公告将于 {{ formatTime(issueDetails.expire_time) }} 过期</text>
 				</view>
 			</view>
 		</view>
@@ -71,6 +134,8 @@
 </template>
 
 <script>
+	const noticeDemo = uniCloud.importObject("notice-demo");
+
 	export default {
 		data() {
 			return {
@@ -78,6 +143,16 @@
 				issueDetails: null,
 				isLoading: true,
 				error: null,
+				isLiked: false,
+				currentLikeCount: 0,
+				noticeTypes: [
+					{ value: 'urgent', text: '紧急通知' },
+					{ value: 'maintenance', text: '维修公告' },
+					{ value: 'activity', text: '活动通知' },
+					{ value: 'policy', text: '政策通知' },
+					{ value: 'general', text: '一般公告' },
+					{ value: 'announcement', text: '重要公告' }
+				]
 			};
 		},
 		onLoad(options) {
@@ -85,87 +160,162 @@
 				this.issueId = options.id;
 				this.fetchIssueDetails();
 			} else {
-				this.error = "无法获取问题ID，请返回重试。";
+				this.error = "无法获取公告ID，请返回重试。";
 				this.isLoading = false;
 			}
 		},
 		methods: {
-			fetchIssueDetails() {
+			// FIX: fetchIssueDetails 方法已更新，增加了防刷逻辑
+			async fetchIssueDetails() {
 				this.isLoading = true;
 				this.error = null;
 
-				uni.request({
-					url: `https://your-backend-api.com/issues/${this.issueId}`,
-					method: 'GET',
-					success: (res) => {
-						// --- 模拟数据已更新，包含了 images 数组 ---
-						console.log(`网络请求详情成功（模拟），ID: ${this.issueId}`);
-						const allIssues = {
-							'hot001': {
-								id: 'hot001',
-								topic: '关于小区南门车辆乱停放问题',
-								location: '南门主干道及周边',
-								mentions: 42,
-								content: '近期，大量业主反映，小区南门出入口及消防通道长期被外来车辆和部分业主车辆违规占用，严重影响了正常通行和消防安全。尤其在早晚高峰期，拥堵现象十分严重，建议物业加强管理，增设禁停标识，并对违停车辆进行处理。',
-								images: [
-									// 使用 placehold.co 生成占位图，方便预览
-									{ id: 'img01', url: 'https://placehold.co/600x400/e2e8f0/475569?text=现场图片1' },
-									{ id: 'img02', url: 'https://placehold.co/600x400/dbeafe/1e40af?text=现场图片2' },
-									{ id: 'img03', url: 'https://placehold.co/600x400/c7d2fe/3730a3?text=现场图片3' }
-								]
-							},
-							'hot002': {
-								id: 'hot002',
-								topic: 'C栋顶楼天台防水层老化漏水',
-								location: 'C栋 15-18层',
-								mentions: 28,
-								content: 'C栋顶楼的天台防水材料已使用多年，出现明显老化、开裂迹象。每逢雨季，顶层及次顶层（18楼、17楼）住户家中均出现不同程度的渗水和墙面发霉现象，严重影响居住质量。希望能尽快安排专业人员勘察并进行维修。',
-								images: [
-									{ id: 'img04', url: 'https://placehold.co/600x400/fecaca/991b1b?text=漏水点' }
-								]
-							},
-							'hot003': {
-								id: 'hot003',
-								topic: '傍晚时段健身器材区域噪音扰民',
-								location: '中心花园健身区',
-								mentions: 19,
-								content: '每天傍晚6点至9点，中心花园的健身器材区域聚集了大量人群，部分人员在使用器材时发出巨大声响，同时有广场舞音乐声音过大，对周边楼栋的住户造成了严重的噪音干扰，希望能够规定活动时间并控制音量。',
-								images: [] // 模拟没有图片的情况
-							},
-							'hot004': {
-								id: 'hot004',
-								topic: '建议增设宠物便溺设施',
-								location: '小区所有草坪区域',
-								mentions: 15,
-								content: '随着小区内饲养宠物的家庭增多，草坪及公共区域的宠物粪便问题日益突出，影响环境卫生。建议在几个主要绿地区域增设宠物厕所或提供免费的拾便袋，并加强宣传，引导宠物主人文明养宠。',
-								images: [
-									{ id: 'img05', url: 'https://placehold.co/600x400/d9f99d/3f6212?text=草坪现状' }
-								]
-							}
-						};
-						
-						this.issueDetails = allIssues[this.issueId] || null;
-						if (!this.issueDetails) {
-							this.error = "未找到该问题的详细信息。";
-						}
-					},
-					fail: (err) => {
-						console.error("详情API请求失败:", err);
-						this.error = "详情加载失败，请检查网络后重试。";
-					},
-					complete: () => {
-						this.isLoading = false;
+				try {
+					// --- 防刷逻辑开始 ---
+					const now = Date.now();
+					const fiveMinutes = 5 * 60 * 1000;
+					
+					// 1. 获取本地存储的查看记录
+					const timestamps = uni.getStorageSync('notice_view_timestamps') || {};
+					const lastViewTime = timestamps[this.issueId];
+
+					let shouldIncrement = true; // 默认需要增加查看次数
+
+					if (lastViewTime && (now - lastViewTime < fiveMinutes)) {
+						// 5分钟内已查看过，不增加查看次数
+						shouldIncrement = false;
+						console.log(`公告 ${this.issueId} 在5分钟内已被查看，本次不增加浏览量。`);
 					}
-				});
+					// --- 防刷逻辑结束 ---
+
+					// 2. 调用云对象，并传入 increment 参数
+					const res = await noticeDemo.getNoticeDetail({
+						id: this.issueId,
+						increment: shouldIncrement
+					});
+
+					if (res.code !== 0) {
+						throw new Error(res.msg || '获取详情失败');
+					}
+					
+					// 3. 如果成功增加了查看次数，则更新本地时间戳
+					if (shouldIncrement) {
+						timestamps[this.issueId] = now;
+						uni.setStorageSync('notice_view_timestamps', timestamps);
+						console.log(`公告 ${this.issueId} 浏览量+1，并记录时间戳。`);
+					}
+					
+					this.issueDetails = res.data;
+					this.currentLikeCount = res.data.like_count || 0;
+					
+					// 检查用户是否已点赞（这里可以从本地存储或服务器获取）
+					this.checkLikeStatus();
+
+				} catch (e) {
+					console.error("fetchIssueDetails error:", e);
+					this.error = e.message || "详情加载失败，请稍后重试。";
+				} finally {
+					this.isLoading = false;
+				}
+			},
+
+			// 检查点赞状态
+			checkLikeStatus() {
+				const likedNotices = uni.getStorageSync('liked_notices') || [];
+				this.isLiked = likedNotices.includes(this.issueId);
+			},
+
+			// 切换点赞状态
+			async toggleLike() {
+				try {
+					const action = this.isLiked ? 'unlike' : 'like';
+					const res = await noticeDemo.likeNotice({
+						id: this.issueId,
+						action: action
+					});
+
+					if (res.code === 0) {
+						this.isLiked = !this.isLiked;
+						this.currentLikeCount += this.isLiked ? 1 : -1;
+						
+						// 更新本地存储
+						let likedNotices = uni.getStorageSync('liked_notices') || [];
+						if (this.isLiked) {
+							likedNotices.push(this.issueId);
+						} else {
+							likedNotices = likedNotices.filter(id => id !== this.issueId);
+						}
+						uni.setStorageSync('liked_notices', likedNotices);
+						
+						uni.showToast({
+							title: this.isLiked ? '点赞成功' : '取消点赞',
+							icon: 'success'
+						});
+					}
+				} catch (e) {
+					console.error('点赞操作失败:', e);
+					uni.showToast({
+						title: '操作失败，请稍后重试',
+						icon: 'none'
+					});
+				}
 			},
 			
-			// V2 新增: 点击图片预览
+			// 预览单张图片
 			previewImage(currentUrl) {
-				const urls = this.issueDetails.images.map(img => img.url);
 				uni.previewImage({
-					current: currentUrl, // 当前显示图片的http链接
-					urls: urls // 需要预览的图片http链接列表
+					current: currentUrl,
+					urls: [currentUrl]
 				});
+			},
+
+			// 预览多张图片
+			previewImages(currentUrl) {
+				const urls = this.issueDetails.http_image_urls || [];
+				uni.previewImage({
+					current: currentUrl,
+					urls: urls
+				});
+			},
+
+			// 格式化文件大小
+			formatFileSize(bytes) {
+				if (bytes === 0) return '0 B';
+				const k = 1024;
+				const sizes = ['B', 'KB', 'MB', 'GB'];
+				const i = Math.floor(Math.log(bytes) / Math.log(k));
+				return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+			},
+
+			// 格式化时间
+			formatTime(timestamp) {
+				if (!timestamp) return '';
+				const date = new Date(timestamp);
+				const year = date.getFullYear();
+				const month = ('0' + (date.getMonth() + 1)).slice(-2);
+				const day = ('0' + date.getDate()).slice(-2);
+				const hour = ('0' + date.getHours()).slice(-2);
+				const minute = ('0' + date.getMinutes()).slice(-2);
+				return `${year}-${month}-${day} ${hour}:${minute}`;
+			},
+
+			// 获取类型图标
+			getTypeIcon(type) {
+				const iconMap = {
+					urgent: '🚨',
+					maintenance: '🔧',
+					activity: '🎉',
+					policy: '📋',
+					general: '📝',
+					announcement: '📢'
+				};
+				return iconMap[type] || '📝';
+			},
+
+			// 获取类型文本
+			getTypeText(type) {
+				const typeObj = this.noticeTypes.find(t => t.value === type);
+				return typeObj ? typeObj.text : '一般公告';
 			},
 
 			goBack() {
@@ -176,13 +326,13 @@
 </script>
 
 <style>
+	/* 样式与之前保持一致 */
 	.detail-page {
 		background-color: #f4f4f4;
 		min-height: 100vh;
 		display: flex;
 		flex-direction: column;
 	}
-
 	.custom-nav-bar {
 		position: fixed;
 		top: 0;
@@ -197,7 +347,6 @@
 		box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.05);
 		z-index: 99;
 	}
-
 	.back-button {
 		position: absolute;
 		left: 20rpx;
@@ -209,144 +358,295 @@
 		font-size: 30rpx;
 		color: #333;
 	}
-	
 	.back-button:active {
 		opacity: 0.7;
 	}
-
 	.back-icon {
 		font-size: 40rpx;
 		font-weight: bold;
 		margin-right: 5rpx;
 	}
-
 	.nav-title {
 		font-size: 34rpx;
 		font-weight: bold;
 		color: #333;
 	}
-	
 	.content-container {
 		padding: 20rpx;
 		padding-top: calc(88rpx + var(--status-bar-height) + 20rpx);
 	}
-	
 	.loading-text, .error-text {
 		text-align: center;
 		padding: 80rpx 40rpx;
 		color: #999;
 	}
-	
 	.error-text {
 		color: #e54d42;
 	}
-	
 	.detail-card {
 		background-color: #ffffff;
 		border-radius: 16rpx;
-		padding: 30rpx;
+		padding: 0;
+		overflow: hidden;
 	}
 	
+	/* 头部样式 */
 	.detail-header {
-		display: flex;
-		align-items: flex-start;
-		padding-bottom: 25rpx;
+		padding: 30rpx;
 		border-bottom: 1px solid #f0f0f0;
+		position: relative;
 	}
-	
-	.header-icon {
-		font-size: 36rpx;
-		color: #007AFF;
+	.header-badges {
+		position: absolute;
+		top: 20rpx;
+		right: 20rpx;
+		display: flex;
+		gap: 10rpx;
+		z-index: 2;
+	}
+	.badge {
+		padding: 6rpx 12rpx;
+		border-radius: 12rpx;
+		font-size: 20rpx;
+		color: #ffffff;
 		font-weight: bold;
-		margin-right: 20rpx;
-		line-height: 1.4;
 	}
-	
-	.header-title {
-		font-size: 38rpx;
-		font-weight: bold;
-		color: #333;
-		flex: 1;
-		line-height: 1.4;
+	.badge-top {
+		background-color: #ff3333;
 	}
-	
-	.info-section {
-		padding: 25rpx 0;
+	.badge-important {
+		background-color: #ff9900;
 	}
-	
-	.info-line {
+	.header-type {
 		display: flex;
 		align-items: center;
-		margin-bottom: 20rpx;
+		margin-bottom: 15rpx;
+	}
+	.type-icon {
 		font-size: 28rpx;
+		margin-right: 10rpx;
+	}
+	.type-text {
+		font-size: 24rpx;
+		color: #007AFF;
+		background-color: #f0f8ff;
+		padding: 6rpx 12rpx;
+		border-radius: 12rpx;
+		font-weight: bold;
+	}
+	.header-title {
+		font-size: 36rpx;
+		font-weight: bold;
+		color: #333;
+		line-height: 1.4;
+		margin-right: 120rpx; /* 为徽章预留空间 */
 	}
 	
-	.info-line:last-child {
-		margin-bottom: 0;
+	/* 发布信息样式 */
+	.publish-info {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 20rpx 30rpx;
+		background-color: #f8f9fa;
+		border-bottom: 1px solid #f0f0f0;
 	}
-	
-	.info-icon {
-		margin-right: 15rpx;
+	.publisher, .publish-time {
+		display: flex;
+		align-items: center;
+		gap: 8rpx;
 	}
-	
-	.info-label {
+	.publisher-icon, .time-icon {
+		font-size: 20rpx;
+		color: #666;
+	}
+	.publisher-name, .time-text {
+		font-size: 24rpx;
 		color: #666;
 	}
 	
-	.info-value {
-		color: #333;
-		font-weight: 500;
+	/* 封面图片样式 */
+	.cover-section {
+		width: 100%;
+		height: 400rpx;
+	}
+	.cover-image {
+		width: 100%;
+		height: 100%;
+		background-color: #f0f0f0;
 	}
 	
-	.content-section {
-		padding: 25rpx 0;
-		border-top: 1px solid #f0f0f0;
-	}
-	
-	.content-title {
+	/* 通用节标题 */
+	.section-title {
 		font-size: 32rpx;
 		font-weight: bold;
 		color: #333;
 		margin-bottom: 20rpx;
 	}
 	
+	/* 摘要样式 */
+	.summary-section {
+		padding: 25rpx 30rpx;
+		border-bottom: 1px solid #f0f0f0;
+	}
+	.summary-text {
+		font-size: 28rpx;
+		color: #666;
+		line-height: 1.6;
+		background-color: #f8f9fa;
+		padding: 20rpx;
+		border-radius: 12rpx;
+		border-left: 4rpx solid #007AFF;
+	}
+	
+	/* 内容样式 */
+	.content-section {
+		padding: 25rpx 30rpx;
+		border-bottom: 1px solid #f0f0f0;
+	}
 	.content-body {
+		margin-top: 10rpx;
+	}
+	.content-text {
 		font-size: 30rpx;
-		color: #555;
+		color: #333;
 		line-height: 1.8;
 		text-align: justify;
 	}
 	
-	/* V2 新增: 图片画廊样式 */
+	/* 图片画廊样式 */
 	.image-gallery {
-		padding-top: 25rpx;
-		margin-top: 25rpx;
-		border-top: 1px solid #f0f0f0;
+		padding: 25rpx 30rpx;
+		border-bottom: 1px solid #f0f0f0;
 	}
-	
-	.gallery-title {
-		font-size: 32rpx;
-		font-weight: bold;
-		color: #333;
-		margin-bottom: 20rpx;
-	}
-	
-	.image-list {
+	.image-grid {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 15rpx; /* 图片之间的间距 */
+		gap: 15rpx;
+		margin-top: 10rpx;
 	}
-	
 	.image-wrapper {
-		width: calc(33.333% - 10rpx); /* 每行三张图，减去gap的影响 */
-		aspect-ratio: 1 / 1; /* 保持图片为正方形 */
+		width: calc(33.333% - 10rpx);
+		aspect-ratio: 1 / 1;
 	}
-	
-	.issue-image {
+	.gallery-image {
 		width: 100%;
 		height: 100%;
-		border-radius: 8rpx;
+		border-radius: 12rpx;
 		background-color: #f0f0f0;
 	}
-
+	
+	/* 附件样式 */
+	.attachment-section {
+		padding: 25rpx 30rpx;
+		border-bottom: 1px solid #f0f0f0;
+	}
+	.attachment-list {
+		margin-top: 10rpx;
+	}
+	.attachment-item {
+		display: flex;
+		align-items: center;
+		padding: 15rpx 20rpx;
+		background-color: #f8f9fa;
+		border-radius: 12rpx;
+		margin-bottom: 15rpx;
+		gap: 15rpx;
+	}
+	.attachment-item:last-child {
+		margin-bottom: 0;
+	}
+	.attachment-icon {
+		font-size: 24rpx;
+		color: #666;
+	}
+	.attachment-name {
+		flex: 1;
+		font-size: 26rpx;
+		color: #333;
+	}
+	.attachment-size {
+		font-size: 22rpx;
+		color: #999;
+	}
+	
+	/* 标签样式 */
+	.tags-section {
+		padding: 25rpx 30rpx;
+		border-bottom: 1px solid #f0f0f0;
+	}
+	.tags-list {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 12rpx;
+		margin-top: 10rpx;
+	}
+	.tag {
+		padding: 8rpx 16rpx;
+		background-color: #e7f3ff;
+		color: #007AFF;
+		border-radius: 16rpx;
+		font-size: 24rpx;
+		font-weight: 500;
+	}
+	
+	/* 统计信息样式 */
+	.stats-section {
+		padding: 25rpx 30rpx;
+		border-bottom: 1px solid #f0f0f0;
+	}
+	.stats-row {
+		display: flex;
+		justify-content: space-around;
+		margin-top: 10rpx;
+	}
+	.stat-item {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 8rpx;
+		padding: 15rpx;
+		border-radius: 12rpx;
+		min-width: 120rpx;
+		transition: background-color 0.3s;
+	}
+	.stat-item:active {
+		background-color: #f0f0f0;
+	}
+	.stat-icon {
+		font-size: 28rpx;
+		transition: transform 0.3s;
+	}
+	.stat-icon.liked {
+		color: #ff3333;
+		transform: scale(1.1);
+	}
+	.stat-label {
+		font-size: 22rpx;
+		color: #666;
+	}
+	.stat-value {
+		font-size: 26rpx;
+		color: #333;
+		font-weight: bold;
+	}
+	
+	/* 过期提醒样式 */
+	.expire-notice {
+		display: flex;
+		align-items: center;
+		gap: 12rpx;
+		padding: 20rpx 30rpx;
+		background-color: #fff3cd;
+		border-left: 4rpx solid #ffc107;
+	}
+	.expire-icon {
+		font-size: 24rpx;
+		color: #856404;
+	}
+	.expire-text {
+		font-size: 26rpx;
+		color: #856404;
+		flex: 1;
+	}
 </style>

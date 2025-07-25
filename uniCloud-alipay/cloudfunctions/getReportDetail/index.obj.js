@@ -146,7 +146,7 @@ module.exports = {
                 throw new Error('记录ID不能为空');
             }
 
-            const allReportCol = db.collection('ALL_Report'); // 使用与add-report-demo一致的表名
+            const allReportCol = db.collection('All_Report'); // 统一使用All_Report
 
             console.log('查询记录详情，ID：', id);
 
@@ -187,6 +187,36 @@ module.exports = {
                 progress = 100;
             }
 
+            // 转换云存储图片链接为可访问的HTTP链接
+            let httpImageUrls = [];
+            if (item.imageUrls && item.imageUrls.length > 0) {
+                console.log('原始图片链接：', item.imageUrls);
+                try {
+                    const cloudImageUrls = item.imageUrls.filter(url => url.startsWith('cloud://'));
+                    if (cloudImageUrls.length > 0) {
+                        const result = await uniCloud.getTempFileURL({
+                            fileList: cloudImageUrls
+                        });
+                        console.log('云存储转换结果：', result);
+
+                        // 将转换后的链接和原有的HTTP链接合并
+                        httpImageUrls = item.imageUrls.map(originalUrl => {
+                            if (originalUrl.startsWith('cloud://')) {
+                                const converted = result.fileList.find(file => file.fileID === originalUrl);
+                                return converted ? converted.tempFileURL : originalUrl;
+                            }
+                            return originalUrl;
+                        });
+                    } else {
+                        httpImageUrls = item.imageUrls;
+                    }
+                    console.log('最终图片链接：', httpImageUrls);
+                } catch (e) {
+                    console.error('图片链接转换失败：', e);
+                    httpImageUrls = item.imageUrls; // 转换失败时使用原链接
+                }
+            }
+
             // 生成处理时间线
             const timelineSteps = generateTimeline(item);
 
@@ -215,7 +245,7 @@ module.exports = {
                 locationInfo: item.locationInfo || {},
 
                 // 图片信息
-                imageUrls: item.imageUrls || [],
+                imageUrls: httpImageUrls,
 
                 // 处理信息
                 processingNotes: item.processingNotes || '',
