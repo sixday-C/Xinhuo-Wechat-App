@@ -26,6 +26,12 @@
 			}
 		},
 		{
+			"path": "pages/Login/Login",
+			"style": {
+				"navigationBarTitleText": "登录"
+			}
+		},
+		{
 			"path": "pages/Home/Report/report",
 			"style": {
 				"navigationBarTitleText": "事务上报"
@@ -166,7 +172,7 @@
 				"text": "公示栏"
 			},
 			{
-				"pagePath": "pages/Profile/profile",
+				"pagePath": "pages/Login/Login",
 				"text": "我的"
 			}
 		]
@@ -196,7 +202,7 @@
 				"navigationBarTitleText": "反馈汇总"
 				} }
 	      ]
-	    },
+	    }
 		
 	  ]
 	  // #endif

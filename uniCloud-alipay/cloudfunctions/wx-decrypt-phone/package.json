@@ -1,0 +1,8 @@
+{
+  "name": "wx-decrypt-phone",
+  "dependencies": {},
+  "extensions": {
+    "uni-cloud-jql": {},
+	"uni-cloud-verify": {}
+  }
+}

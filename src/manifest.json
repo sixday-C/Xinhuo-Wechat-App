@@ -89,10 +89,11 @@
         "enable" : false
     },
     "vueVersion" : "3",
-    "h5" : {
-        "devServer" : {
-            "port" : "https://env-00jxtsjrq0f2.normal.cloudstatic.cn",
-            "https" : true
-        }
+    "h5": {
+      "devServer": {
+        "host": "localhost",
+        "port": 3000,
+        "https": false
+      }
     }
 }

@@ -1,19 +1,24 @@
 <template>
   <view class="page-container">
+    <view class="section-header">
+      <button class="logout-btn" @click="logout">退出登录</button>
+    </view>
+
     <view class="section-card">
       <view class="section-title">居民信息</view>
       <view class="info-form">
         <view class="form-item">
-          <text class="item-label">手机号码</text>
-          <input class="item-input" type="number" v-model="userInfo.phone" placeholder="请输入手机号码" />
+          <text class="item-label">手机号</text>
+          <!-- 显示不可编辑的手机号 -->
+          <text class="item-value">{{ userInfo.phone }}</text>
         </view>
         <view class="form-item">
           <text class="item-label">姓名</text>
-          <input class="item-input" v-model="userInfo.name" placeholder="请输入您的姓名" />
+          <input v-model.trim="userInfo.name" placeholder="请输入您的姓名" />
         </view>
         <view class="form-item">
           <text class="item-label">楼宇门牌</text>
-          <input class="item-input" v-model="userInfo.address" placeholder="例如：A栋1单元202" />
+          <input v-model.trim="userInfo.address" placeholder="例如：A栋1单元202" />
         </view>
       </view>
       <button class="save-btn" :loading="loading" @click="saveInfo">保存信息</button>
@@ -30,7 +35,7 @@
         <view v-if="historyList.length === 0" class="empty-history">
           <text>暂无上报记录</text>
         </view>
-				<view class="history-item" v-for="item in historyList" :key="item.id" @click="viewHistoryDetail(item)">
+        <view v-for="item in historyList" :key="item.id" class="history-item" @click="viewHistoryDetail(item)">
           <view class="item-content">
             <text class="item-title">{{ item.title }}</text>
             <text class="item-date">{{ item.date }}</text>
@@ -46,100 +51,96 @@
 </template>
 
 <script>
-
 export default {
   data() {
     return {
-                // 用户信息数据
-      userInfo: {
-        phone: '',
-        name: '',
-        address: ''
-      },
-      // 结果反馈
+      userInfo: { phone: '', name: '', address: '' },
       loading: false,
       result: null,
-      // 历史记录
-      historyList: [
-        { id: '1001', title: '小区东门路灯不亮', date: '2025-07-02', status: '已处理', progress: 100 },
-        { id: '1002', title: 'B栋电梯有异响', date: '2025-07-01', status: '处理中', progress: 50 },
-        { id: '1003', title: '建议增加快递存放点', date: '2025-06-28', status: '已处理', progress: 100 }
-      ]
+      historyList: []
     }
   },
+  async onshow(){
+	  await this.fetchUserInfo();
+  },
+  async onLoad() {
+    // 未登录跳回登录页
+    if (!uni.getStorageSync('is_logged_in')) {
+      uni.reLaunch({ url: '/pages/Login/Login' });
+      return;
+    }
+    
+    await this.fetchHistory();
+  },
   methods: {
-    async saveInfo() {
-      // 表单校验
-      const { phone, name, address } = this.userInfo
-      if (!phone || !name || !address) {
-        return uni.showToast({ title: '请填写完整的居民信息', icon: 'none' })
-      }
-      uni.setStorageSync('userInfo', this.userInfo);
-      this.loading = true
-      this.result = null
-
-      // 调用云对象
-      const addUser = uniCloud.importObject('add-user-demo-1')
-      try {
-        const response = await addUser.addUser({
-          phone,
-          name,
-          address
-        })
-
-        if (response.success) {
-          // 成功
-          
-          const newId = response.data.id
-          this.result = { success: true, message: '' }
-
-          // 插入到历史列表最前面
-        } else {
-          // 云函数返回失败
-          this.result = { success: false, message: response.error || '' }
-        }
-      } catch (e) {
-        // 调用出错
-        this.result = { success: false, message: e.message || '请求异常' }
-      } finally {
-        this.loading = false
+    // 获取用户信息
+    async fetchUserInfo() {
+      const db = uniCloud.database();
+      const userId = uni.getStorageSync('current_user_id');
+      const { data } = await db.collection('demo-user').doc(userId).get();
+      if (data.length > 0) {
+        this.userInfo = data[0];
       }
     },
-
+    // 获取历史记录（示例数据或改为动态获取）
+    async fetchHistory() {
+      // TODO: 根据需求查询历史上报记录
+      this.historyList = [
+        { id: '1001', title: '小区东门路灯不亮', date: '2025-07-02', status: '已处理', progress: 100 },
+        { id: '1002', title: 'B栋电梯有异响', date: '2025-07-01', status: '处理中', progress: 50 }
+      ];
+    },
+    // 更新用户信息（仅更新姓名和地址，不修改手机号）
+    async saveInfo() {
+      const { name, address } = this.userInfo;
+      if (!name || !address) {
+        uni.showToast({ title: '请填写完整信息', icon: 'none' });
+        return;
+      }
+      this.loading = true;
+      try {
+        const db = uniCloud.database();
+        const userId = uni.getStorageSync('current_user_id');
+        const { updated } = await db.collection('demo-user').doc(userId)
+          .update({ name, address });
+        if (updated > 0) {
+          this.result = { success: true, message: '更新成功' };
+        } else {
+          this.result = { success: false, message: '未做任何修改' };
+        }
+      } catch (e) {
+        this.result = { success: false, message: e.message };
+      } finally {
+        this.loading = false;
+      }
+    },
+    // 退出登录
+    logout() {
+      uni.clearStorageSync();
+      uni.reLaunch({ url: '/pages/Login/Login' });
+    },
     viewHistoryDetail(item) {
       const params = {
         id: item.id,
         title: encodeURIComponent(item.title),
         date: item.date,
         status: item.status,
-        progress: item.progress || 0, // 如果没有progress字段，默认为0
+        progress: item.progress || 0,
         type: '设施维修',
         location: '小区公共区域'
       };
-    
-      // 构建查询字符串
       const queryString = Object.keys(params)
         .map(key => `${key}=${params[key]}`)
         .join('&');
-      
-      uni.navigateTo({
-        url: `/pages/Profile/history-detail?${queryString}`
-      });
-    },
-    // 根据状态获取进度条颜色
-    getProgressColor(status) {
-      if (status === '已处理') {
-        return '#4cd964'; // 绿色，与已处理状态文字颜色一致
-      } else if (status === '处理中') {
-        return '#ff9900'; // 橙色，与处理中状态文字颜色一致
-      }
-      return '#007AFF'; // 默认蓝色
+      uni.navigateTo({ url: `/pages/Profile/history-detail?${queryString}` });
     }
   }
 }
 </script>
 
 <style>
+	.section-header { display: flex; justify-content: flex-end; padding: 20rpx; }
+	.logout-btn { font-size: 28rpx; color: #007AFF; }
 	.page-container {
 		background-color: #f4f4f4;
 		min-height: 100vh;
@@ -171,9 +172,10 @@ export default {
 		font-size: 30rpx;
 	}
 
-	.item-input {
+	.item-value {
 		flex: 1;
 		font-size: 30rpx;
+		color: #333;
 	}
 	
 	.save-btn {

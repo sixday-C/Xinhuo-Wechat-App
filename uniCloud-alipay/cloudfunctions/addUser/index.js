@@ -14,7 +14,7 @@ exports.main = async (event, context) => {
 
 	try {
 		// 检查手机号是否已存在
-		const existUser = await db.collection("demo_user")
+		const existUser = await db.collection("demo-user")
 			.where({ phone: userData.phone })
 			.get();
 
@@ -29,7 +29,7 @@ exports.main = async (event, context) => {
 			createTime: Date.now()
 		};
 
-		const res = await db.collection("demo_user").add(userRecord);
+		const res = await db.collection("demo-user").add(userRecord);
 
 		return {
 			code: 200,
