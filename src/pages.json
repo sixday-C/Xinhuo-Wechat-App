@@ -1,55 +1,55 @@
 {
-	"pages": [
-		{
-			"path": "pages/Home/home",
-			"style": {
-				"navigationBarTitleText": "办事"
-			}
-		},
-		{
-			"path": "pages/Notice/notice",
-			"style": {
-				"navigationBarTitleText": "公示栏"
-			}
-		},
-		{
-			"path": "pages/issue-detail/issue-detail",
-			"style": {
-				"navigationStyle": "custom", 
-				"navigationBarTitleText": ""
-			}
-		},
-		{
-			"path": "pages/Profile/profile",
-			"style": {
-				"navigationBarTitleText": "我的"
-			}
-		},
-		{
-			"path": "pages/Login/Login",
-			"style": {
-				"navigationBarTitleText": "登录"
-			}
-		},
-		{
-			"path": "pages/Home/Report/report",
-			"style": {
-				"navigationBarTitleText": "事务上报"
-			}
-		},
-		{
-			"path": "pages/Home/Appointment/appointment",
-			"style": {
-				"navigationBarTitleText": "线下预约"
-			}
-		},
-		{
-			"path": "pages/Profile/history-detail",
-			"style": {
-				"navigationBarTitleText": "历史记录详情"
-			}
-		}
-	,{
+    "pages": [
+        {
+            "path": "pages/Home/home",
+            "style": {
+                "navigationBarTitleText": "办事"
+            }
+        },
+        {
+            "path": "pages/Notice/notice",
+            "style": {
+                "navigationBarTitleText": "公示栏"
+            }
+        },
+        {
+            "path": "pages/issue-detail/issue-detail",
+            "style": {
+                "navigationStyle": "custom", 
+                "navigationBarTitleText": ""
+            }
+        },
+        {
+            "path": "pages/Profile/profile",
+            "style": {
+                "navigationBarTitleText": "我的"
+            }
+        },
+        {
+            "path": "pages/Login/Login",
+            "style": {
+                "navigationBarTitleText": "登录"
+            }
+        },
+        {
+            "path": "pages/Home/Report/report",
+            "style": {
+                "navigationBarTitleText": "事务上报"
+            }
+        },
+        {
+            "path": "pages/Home/Appointment/appointment",
+            "style": {
+                "navigationBarTitleText": "线下预约"
+            }
+        },
+        {
+            "path": "pages/Profile/history-detail",
+            "style": {
+                "navigationBarTitleText": "历史记录详情"
+            }
+        }
+    ,{
     "path": "uni_modules/uni-id-pages/pages/register/register",
     "style": {
         "navigationBarTitleText": "注册"
@@ -151,59 +151,31 @@
     }
 }
 ],
-	"globalStyle": {
-		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "uni-app",
-		"navigationBarBackgroundColor": "#F8F8F8",
-		"backgroundColor": "#F8F8F8"
-	},
-	"tabBar": {
-		"color": "#7A7E83",
-		"selectedColor": "#007AFF",
-		"borderStyle": "black",
-		"backgroundColor": "#FFFFFF",
-		"list": [
-			{
-				"pagePath": "pages/Home/home",
-				"text": "办事"
-			},
-			{
-				"pagePath": "pages/Notice/notice",
-				"text": "公示栏"
-			},
-			{
-				"pagePath": "pages/Login/Login",
-				"text": "我的"
-			}
-		]
-	},
-	// #ifdef H5
-	  "subPackages": [
-	    {
-	      "root": "pages-admin",
-	      "pages": [
-			{
-				"path": "indad/indad",
-				"style": {
-				"navigationBarTitleText": "管理端后台"
-				}
-			},
-	        { "path": "login/login" ,"style": {
-				"navigationBarTitleText": "登录界面"
-				}},
-	        { "path": "user-list/user-list" ,"style": {
-				"navigationBarTitleText": "用户列表"
-				}},
-	        { "path": "booking-list/booking-list" ,"style": {
-				"navigationBarTitleText": "预约信息"
-				}},
-	        
-	        { "path": "feedback-list/feedback-list","style": {
-				"navigationBarTitleText": "反馈汇总"
-				} }
-	      ]
-	    }
-		
-	  ]
-	  // #endif
+    "globalStyle": {
+        "navigationBarTextStyle": "black",
+        "navigationBarTitleText": "uni-app",
+        "navigationBarBackgroundColor": "#F8F8F8",
+        "backgroundColor": "#F8F8F8"
+    },
+    "tabBar": {
+        "color": "#7A7E83",
+        "selectedColor": "#007AFF",
+        "borderStyle": "black",
+        "backgroundColor": "#FFFFFF",
+        "list": [
+            {
+                "pagePath": "pages/Home/home",
+                "text": "办事"
+            },
+            {
+                "pagePath": "pages/Notice/notice",
+                "text": "公示栏"
+            },
+            {
+                "pagePath": "pages/Profile/profile",
+                "text": "我的"
+            }
+        ]
+    }
+
 }
