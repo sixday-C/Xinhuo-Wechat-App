@@ -165,6 +165,16 @@
 			}
 		},
 		methods: {
+			// 将fileID转换为CDN地址
+			fileIdToCdnUrl(fileId) {
+				if (!fileId) return '';
+				if (fileId.startsWith('cloud://')) {
+					// 根据你的云存储环境替换，这里使用常见的格式
+					return fileId.replace('cloud://env-00jxtsjrq0f2', 'https://env-00jxtsjrq0f2.normal.cloudstatic.cn');
+				}
+				return fileId; // 已经是http/https地址
+			},
+
 			// FIX: fetchIssueDetails 方法已更新，增加了防刷逻辑
 			async fetchIssueDetails() {
 				this.isLoading = true;
@@ -205,8 +215,21 @@
 						console.log(`公告 ${this.issueId} 浏览量+1，并记录时间戳。`);
 					}
 					
-					this.issueDetails = res.data;
-					this.currentLikeCount = res.data.like_count || 0;
+					// 处理图片数据
+					const issueData = res.data;
+					
+					// 处理封面图片
+					if (issueData.images && issueData.images.length > 0) {
+						issueData.cover_image_url = this.fileIdToCdnUrl(issueData.images[0]);
+					}
+					
+					// 处理所有图片URL
+					issueData.http_image_urls = Array.isArray(issueData.images) 
+						? issueData.images.map(this.fileIdToCdnUrl).filter(url => url) 
+						: [];
+					
+					this.issueDetails = issueData;
+					this.currentLikeCount = issueData.like_count || 0;
 					
 					// 检查用户是否已点赞（这里可以从本地存储或服务器获取）
 					this.checkLikeStatus();

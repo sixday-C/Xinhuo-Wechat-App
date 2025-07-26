@@ -1,0 +1,17 @@
+// 文档教程: https://uniapp.dcloud.net.cn/uniCloud/schema
+{
+	"bsonType": "object",
+	"required": [],
+	"permission": {
+		"read": false,
+		"create": false,
+		"update": false,
+		"delete": false
+	},
+	"properties": {
+		"_id": { "bsonType": "string", "title": "配置ID" },
+		  "appId": { "bsonType": "string", "title": "小程序AppID" },
+		  "appSecret": { "bsonType": "string", "title": "小程序AppSecret" },
+		  "subscribe_template_id": { "bsonType": "string", "title": "订阅消息模板ID" }
+	}
+}

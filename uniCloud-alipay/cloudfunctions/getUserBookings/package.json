@@ -1,0 +1,11 @@
+{
+    "name": "getUserBookings",
+    "version": "1.0.0",
+    "description": "获取用户预约记录",
+    "main": "index.obj.js",
+    "dependencies": {},
+    "cloudfunction": {
+        "memory": 256,
+        "timeout": 5
+    }
+}

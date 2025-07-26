@@ -96,15 +96,15 @@
 						<view v-if="notice.is_important" class="badge badge-important">重要</view>
 					</view>
 
-					<!-- 封面图片 -->
-					<view v-if="notice.cover_image_url" class="notice-cover">
-						<image 
-							class="cover-image" 
-							:src="notice.cover_image_url" 
-							mode="aspectFill"
-							@click.stop="previewImage(notice.cover_image_url)"
-						></image>
-					</view>
+									<!-- 封面图片 -->
+				<view v-if="notice.cover_image_url" class="notice-cover">
+					<image 
+						class="cover-image" 
+						:src="notice.cover_image_url" 
+						mode="aspectFill"
+						@click.stop="previewImage(notice.cover_image_url, notice.image_urls)"
+					></image>
+				</view>
 
 					<!-- 公告内容 -->
 					<view class="notice-content">
@@ -160,7 +160,7 @@
 				noticeList: [],
 				isLoading: true,
 				error: null,
-				communityId: "687f52b3367dc042238a07ad",
+				communityId: "", // 改为空字符串，显示所有社区公告
 				sortBy: 'time',
 				selectedType: '',
 				searchKeyword: '',
@@ -179,9 +179,39 @@
 			};
 		},
 		onShow() {
+			this.getUserCommunity(); // 获取用户社区信息
 			this.fetchNotices();
 		},
 		methods: {
+			// 将fileID转换为CDN地址
+			fileIdToCdnUrl(fileId) {
+				if (!fileId) return '';
+				if (fileId.startsWith('cloud://')) {
+					// 根据你的云存储环境替换，这里使用常见的格式
+					return fileId.replace('cloud://env-00jxtsjrq0f2', 'https://env-00jxtsjrq0f2.normal.cloudstatic.cn');
+				}
+				return fileId; // 已经是http/https地址
+			},
+
+			// 获取用户社区信息
+			async getUserCommunity() {
+				try {
+					// 这里应该根据实际业务逻辑获取用户的社区ID
+					// 例如从本地存储、用户信息接口等获取
+					const userInfo = uni.getStorageSync('userInfo');
+					if (userInfo && userInfo.community_id) {
+						this.communityId = userInfo.community_id;
+					} else {
+						// 如果没有用户社区信息，显示所有社区的公告
+						this.communityId = "";
+					}
+				} catch (error) {
+					console.error('获取用户社区信息失败:', error);
+					// 出错时显示所有社区的公告
+					this.communityId = "";
+				}
+			},
+			
 			async fetchNotices() {
 				this.isLoading = true;
 				this.error = null;
@@ -209,7 +239,21 @@
 						throw new Error(res.msg || '获取数据失败');
 					}
 					
-					this.noticeList = res.data.list || [];
+					// 处理图片数据
+					this.noticeList = (res.data.list || []).map(notice => {
+						// 处理封面图片：优先使用第一张images，如果没有则为空
+						notice.cover_image_url = '';
+						if (notice.images && notice.images.length > 0) {
+							notice.cover_image_url = this.fileIdToCdnUrl(notice.images[0]);
+						}
+						
+						// 处理所有图片URL
+						notice.image_urls = Array.isArray(notice.images) 
+							? notice.images.map(this.fileIdToCdnUrl).filter(url => url) 
+							: [];
+						
+						return notice;
+					});
 					
 				} catch (e) {
 					console.error("fetchNotices error:", e);
@@ -261,10 +305,11 @@
 			},
 
 			// 预览图片
-			previewImage(imageUrl) {
+			previewImage(currentUrl, allUrls) {
+				const urls = allUrls && allUrls.length > 0 ? allUrls : [currentUrl];
 				uni.previewImage({
-					current: imageUrl,
-					urls: [imageUrl]
+					current: currentUrl,
+					urls: urls
 				});
 			},
 
@@ -482,11 +527,22 @@
 		width: 200rpx;
 		height: 150rpx;
 		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		overflow: hidden;
+		border-radius: 12rpx;
+		background-color: #f8f8f8;
 	}
 	.cover-image {
 		width: 100%;
 		height: 100%;
 		background-color: #f0f0f0;
+		border-radius: 12rpx;
+		transition: transform 0.2s;
+	}
+	.cover-image:active {
+		transform: scale(0.95);
 	}
 	
 	/* 公告内容样式 */
