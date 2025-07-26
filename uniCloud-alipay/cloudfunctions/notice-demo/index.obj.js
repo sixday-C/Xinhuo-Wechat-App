@@ -1,122 +1,81 @@
 const db = uniCloud.database();
 const dbCmd = db.command;
 
-// 将cloud://格式的图片URL转换为可访问的HTTP URL
-async function convertImageUrls(images) {
-  if (!images || images.length === 0) {
-    return [];
-  }
-
-  try {
-    const cloudImageUrls = images.filter(url => url.startsWith('cloud://'));
-    if (cloudImageUrls.length === 0) {
-      return images;
-    }
-
-    const result = await uniCloud.getTempFileURL({
-      fileList: cloudImageUrls
-    });
-
-    return images.map(originalUrl => {
-      if (originalUrl.startsWith('cloud://')) {
-        const converted = result.fileList.find(file => file.fileID === originalUrl);
-        return converted ? converted.tempFileURL : originalUrl;
-      }
-      return originalUrl;
-    });
-  } catch (error) {
-    console.error('图片URL转换失败:', error);
-    return images;
-  }
-}
-
-// 格式化时间
-function formatTime(timestamp) {
-  if (!timestamp) return '';
-  const date = new Date(timestamp);
-  const year = date.getFullYear();
-  const month = ('0' + (date.getMonth() + 1)).slice(-2);
-  const day = ('0' + date.getDate()).slice(-2);
-  const hour = ('0' + date.getHours()).slice(-2);
-  const minute = ('0' + date.getMinutes()).slice(-2);
-  return `${year}-${month}-${day} ${hour}:${minute}`;
-}
-
-// 生成摘要
-function generateSummary(content, maxLength = 150) {
-  if (!content) return '';
-  return content.length > maxLength ? content.substring(0, maxLength) + '...' : content;
-}
-
 module.exports = {
   _before: async function () {
 
   },
 
-  // 创建公告
+  // 统一入口方法，根据action参数调用对应的方法
+  async main(params) {
+    const { action, ...data } = params
+
+    switch (action) {
+      case 'createNotice':
+        return await this.createNotice(data)
+      case 'getNotices':
+        return await this.getNotices(data)
+      case 'getNoticeDetail':
+        return await this.getNoticeDetail(data)
+      case 'updateNotice':
+        return await this.updateNotice(data)
+      case 'deleteNotice':
+        return await this.deleteNotice(data)
+      case 'likeNotice':
+        return await this.likeNotice(data)
+      default:
+        throw new Error(`未知的操作类型: ${action}`)
+    }
+  },
   createNotice: async function (params) {
     const {
       community_id,
       title,
       content,
-      summary,
       notice_type = 'general',
       priority = 2,
       target_audience = ["all"],
       target_buildings = [],
       images = [],
-      cover_image,
       attachments = [],
       is_top = false,
-      is_important = false,
-      allow_comment = true,
       expire_time,
-      tags = [],
-      publish_user_id,
-      publisher_name,
-      status = 0
+      status = 0,
+      publish_time,
+      create_time,
+      update_time
     } = params;
 
-    // 基础验证
     if (!community_id || !title || !content) {
       throw new Error('社区ID、标题和内容为必填项');
     }
-    if (title.length < 2 || title.length > 200) {
-      throw new Error('标题长度必须在2-200字之间');
+    if (title.length < 2 || title.length > 100) {
+      throw new Error('标题长度必须在2-100字之间');
     }
-    if (content.length < 10 || content.length > 5000) {
-      throw new Error('内容长度必须在10-5000字之间');
+    if (content.length < 10 || content.length > 2000) {
+      throw new Error('内容长度必须在10-2000字之间');
     }
-
-    // 如果没有提供摘要，自动生成
-    const finalSummary = summary || generateSummary(content);
 
     const noticeData = {
       community_id,
       title,
       content,
-      summary: finalSummary,
       notice_type,
       priority,
-      publish_user_id: publish_user_id || "687de55fbece7bc449a71988",
-      publisher_name: publisher_name || "系统管理员",
+      publish_user_id: "687de55fbece7bc449a71988",
       target_audience,
       target_buildings,
       images,
-      cover_image: cover_image || (images.length > 0 ? images[0] : null),
       attachments,
       is_top,
-      is_important,
-      allow_comment,
       status,
       expire_time: expire_time ? new Date(expire_time) : null,
       view_count: 0,
       like_count: 0,
       comment_count: 0,
-      tags,
-      publish_time: status === 1 ? new Date() : null,
-      create_time: new Date(),
-      update_time: new Date()
+      publish_time: publish_time ? new Date(publish_time) : new Date(),
+      create_time: create_time ? new Date(create_time) : new Date(),
+      update_time: update_time ? new Date(update_time) : new Date()
     };
 
     const res = await db.collection('notice').add(noticeData);
@@ -128,7 +87,6 @@ module.exports = {
     };
   },
 
-  // 获取公告列表
   getNotices: async function (params) {
     const {
       community_id,
@@ -137,79 +95,72 @@ module.exports = {
       pageSize = 10,
       notice_type,
       is_top,
-      is_important,
       keyword,
-      sort_by = 'time' // time, hot, top
+      sort_field = 'publish_time',
+      sort_order = 'desc'
     } = params;
 
-    let whereCondition = {
+    let whereConditions = {
       community_id: community_id || dbCmd.exists(true),
       status: status !== undefined ? status : dbCmd.neq(3)
     };
 
-    // 添加各种筛选条件
     if (notice_type) {
-      whereCondition.notice_type = notice_type;
+      whereConditions.notice_type = notice_type;
     }
     if (is_top !== undefined) {
-      whereCondition.is_top = is_top;
-    }
-    if (is_important !== undefined) {
-      whereCondition.is_important = is_important;
+      whereConditions.is_top = is_top;
     }
 
-    // 关键字搜索
-    if (keyword) {
-      whereCondition.$or = [
-        { title: new RegExp(keyword, 'i') },
-        { content: new RegExp(keyword, 'i') },
-        { summary: new RegExp(keyword, 'i') }
+    // 关键词搜索（标题和内容）
+    if (keyword && keyword.trim()) {
+      whereConditions.$or = [
+        { title: new RegExp(keyword.trim(), 'i') },
+        { content: new RegExp(keyword.trim(), 'i') }
       ];
     }
 
-    let query = db.collection('notice').where(whereCondition);
+    let query = db.collection('notice').where(whereConditions);
 
     const skip = (page - 1) * pageSize;
 
-    // 根据排序方式选择
-    if (sort_by === 'hot') {
-      query = query.orderBy('view_count', 'desc').orderBy('like_count', 'desc');
-    } else if (sort_by === 'top') {
-      query = query.orderBy('is_top', 'desc').orderBy('priority', 'asc');
-    } else {
-      query = query.orderBy('is_top', 'desc').orderBy('priority', 'asc').orderBy('publish_time', 'desc');
+    // 动态排序
+    const sortOptions = {};
+    if (is_top !== undefined) {
+      sortOptions.is_top = 'desc';
     }
+    sortOptions[sort_field] = sort_order;
+    sortOptions.priority = 'asc';
 
-    const res = await query.skip(skip).limit(pageSize).get();
-    const countRes = await db.collection('notice').where(whereCondition).count();
+    // 添加排序
+    Object.entries(sortOptions).forEach(([field, order]) => {
+      query = query.orderBy(field, order);
+    });
 
-    // 处理返回数据，转换图片URL
-    const processedList = [];
-    for (const item of res.data) {
-      // 转换封面图片URL
-      let coverImageUrl = null;
-      if (item.cover_image) {
-        const coverUrls = await convertImageUrls([item.cover_image]);
-        coverImageUrl = coverUrls[0];
-      }
+    const res = await query
+      .skip(skip)
+      .limit(pageSize)
+      .get();
 
-      // 转换所有图片URL（用于详情页）
-      const httpImageUrls = await convertImageUrls(item.images || []);
+    const countRes = await query.count();
 
-      processedList.push({
-        ...item,
-        cover_image_url: coverImageUrl,
-        http_image_urls: httpImageUrls,
-        formatted_publish_time: formatTime(item.publish_time),
-        formatted_create_time: formatTime(item.create_time)
-      });
-    }
+    // 处理返回数据，确保所有字段都返回
+    const list = res.data.map(item => ({
+      ...item,
+      tags: item.tags || [],
+      like_count: item.like_count || 0,
+      comment_count: item.comment_count || 0,
+      allow_comment: item.allow_comment !== false,
+      is_important: item.is_important || false,
+      publisher_name: item.publisher_name || '管理员',
+      summary: item.summary || item.content.substring(0, 100)
+    }));
 
     return {
       code: 0,
       msg: '查询成功',
       data: {
-        list: processedList,
+        list,
         total: countRes.total,
         page,
         pageSize
@@ -217,10 +168,9 @@ module.exports = {
     };
   },
 
-
   // 获取公告详情
   getNoticeDetail: async function (params) {
-    const { id, increment = true } = params;
+    const { id, increment = false } = params;
 
     if (!id) {
       throw new Error('公告ID不能为空');
@@ -228,94 +178,79 @@ module.exports = {
 
     let noticeDoc;
 
-    try {
-      if (increment) {
-        // 如果需要增加次数，则执行 updateAndReturn
-        const res = await db.collection('notice')
-          .doc(id)
-          .updateAndReturn({
-            view_count: dbCmd.inc(1)
-          });
-        noticeDoc = res.doc;
-      } else {
-        // 如果不需要增加次数，则只执行 get
-        const res = await db.collection('notice').doc(id).get();
-        noticeDoc = res.data && res.data.length > 0 ? res.data[0] : null;
-      }
-
-      if (!noticeDoc) {
-        throw new Error('公告不存在');
-      }
-
-      // 转换图片URLs
-      const httpImageUrls = await convertImageUrls(noticeDoc.images || []);
-
-      // 转换封面图片URL
-      let coverImageUrl = null;
-      if (noticeDoc.cover_image) {
-        const coverUrls = await convertImageUrls([noticeDoc.cover_image]);
-        coverImageUrl = coverUrls[0];
-      }
-
-      // 处理附件URLs（如果有的话）
-      let processedAttachments = [];
-      if (noticeDoc.attachments && noticeDoc.attachments.length > 0) {
-        for (const attachment of noticeDoc.attachments) {
-          if (typeof attachment === 'object' && attachment.file_id) {
-            try {
-              const fileUrls = await convertImageUrls([attachment.file_id]);
-              processedAttachments.push({
-                ...attachment,
-                file_url: fileUrls[0]
-              });
-            } catch (error) {
-              console.error('附件URL转换失败:', error);
-              processedAttachments.push(attachment);
-            }
-          } else {
-            processedAttachments.push(attachment);
-          }
-        }
-      }
-
-      const processedData = {
-        ...noticeDoc,
-        http_image_urls: httpImageUrls,
-        cover_image_url: coverImageUrl,
-        processed_attachments: processedAttachments,
-        formatted_publish_time: formatTime(noticeDoc.publish_time),
-        formatted_create_time: formatTime(noticeDoc.create_time),
-        formatted_update_time: formatTime(noticeDoc.update_time)
-      };
-
-      return {
-        code: 0,
-        msg: '查询成功',
-        data: processedData
-      };
-    } catch (error) {
-      console.error('获取公告详情失败:', error);
-      throw new Error(error.message || '获取公告详情失败');
+    if (increment) {
+      // 如果需要增加次数，则执行 updateAndReturn
+      const res = await db.collection('notice')
+        .doc(id)
+        .updateAndReturn({
+          view_count: dbCmd.inc(1)
+        });
+      noticeDoc = res.doc;
+    } else {
+      // 如果不需要增加次数，则只执行 get
+      const res = await db.collection('notice').doc(id).get();
+      noticeDoc = res.data && res.data.length > 0 ? res.data[0] : null;
     }
+
+    if (!noticeDoc) {
+      throw new Error('公告不存在');
+    }
+
+    return {
+      code: 0,
+      msg: '查询成功',
+      data: noticeDoc
+    };
   },
 
-  // ... updateNotice, deleteNotice 等其他函数保持不变 ...
   updateNotice: async function (params) {
     const {
       id,
       title,
       content,
+      notice_type,
+      priority,
+      target_audience,
+      target_buildings,
+      images,
+      attachments,
+      is_top,
+      expire_time,
+      status
     } = params;
 
     if (!id) {
       throw new Error('公告ID不能为空');
     }
 
+    // 构建更新数据
     const updateData = {
       update_time: new Date()
     };
-    if (title) updateData.title = title;
-    if (content) updateData.content = content;
+
+    if (title !== undefined) {
+      if (title.length < 2 || title.length > 100) {
+        throw new Error('标题长度必须在2-100字之间');
+      }
+      updateData.title = title;
+    }
+
+    if (content !== undefined) {
+      if (content.length < 10 || content.length > 2000) {
+        throw new Error('内容长度必须在10-2000字之间');
+      }
+      updateData.content = content;
+    }
+
+    if (notice_type !== undefined) updateData.notice_type = notice_type;
+    if (priority !== undefined) updateData.priority = priority;
+    if (target_audience !== undefined) updateData.target_audience = target_audience;
+    if (target_buildings !== undefined) updateData.target_buildings = target_buildings;
+    if (images !== undefined) updateData.images = images;
+    if (attachments !== undefined) updateData.attachments = attachments;
+    if (is_top !== undefined) updateData.is_top = is_top;
+    if (expire_time !== undefined) updateData.expire_time = expire_time ? new Date(expire_time) : null;
+    if (status !== undefined) updateData.status = status;
 
     const res = await db.collection('notice')
       .doc(id)
@@ -324,81 +259,66 @@ module.exports = {
     return {
       code: 0,
       msg: '更新成功',
-      data: res.updated
+      data: {
+        updated: res.updated,
+        id: id
+      }
     };
   },
 
   deleteNotice: async function (params) {
-    throw new Error('无权限删除公告');
-  },
+    const { id, ids } = params;
 
-  // 点赞/取消点赞公告
-  likeNotice: async function (params) {
-    const { id, user_id, action = 'like' } = params; // action: 'like' 或 'unlike'
-
-    if (!id) {
-      throw new Error('公告ID不能为空');
+    if (!id && (!ids || !Array.isArray(ids) || ids.length === 0)) {
+      throw new Error('请提供要删除的公告ID');
     }
 
-    try {
-      if (action === 'like') {
-        // 增加点赞数
-        await db.collection('notice')
-          .doc(id)
-          .update({
-            like_count: dbCmd.inc(1)
-          });
+    let deleteIds = [];
+    if (id) {
+      deleteIds = [id];
+    } else {
+      deleteIds = ids;
+    }
 
-        return {
-          code: 0,
-          msg: '点赞成功',
-          data: { action: 'liked' }
-        };
-      } else {
-        // 减少点赞数
-        await db.collection('notice')
-          .doc(id)
-          .update({
-            like_count: dbCmd.inc(-1)
-          });
+    // 批量删除
+    const promises = deleteIds.map(deleteId => {
+      return db.collection('notice').doc(deleteId).remove();
+    });
 
-        return {
-          code: 0,
-          msg: '取消点赞成功',
-          data: { action: 'unliked' }
-        };
+    const results = await Promise.all(promises);
+    const deletedCount = results.reduce((count, result) => count + result.deleted, 0);
+
+    return {
+      code: 0,
+      msg: `成功删除 ${deletedCount} 条公告`,
+      data: {
+        deleted: deletedCount,
+        ids: deleteIds
       }
-    } catch (error) {
-      console.error('点赞操作失败:', error);
-      throw new Error('点赞操作失败');
-    }
+    };
   },
 
-  // 发布公告（将草稿状态改为已发布）
-  publishNotice: async function (params) {
+  // 点赞功能
+  likeNotice: async function (params) {
     const { id } = params;
 
     if (!id) {
       throw new Error('公告ID不能为空');
     }
 
-    try {
-      const res = await db.collection('notice')
-        .doc(id)
-        .update({
-          status: 1,
-          publish_time: new Date(),
-          update_time: new Date()
-        });
+    // 增加点赞数
+    const res = await db.collection('notice').doc(id).update({
+      like_count: dbCmd.inc(1),
+      update_time: new Date()
+    });
 
-      return {
-        code: 0,
-        msg: '公告发布成功',
-        data: res.updated
-      };
-    } catch (error) {
-      console.error('发布公告失败:', error);
-      throw new Error('发布公告失败');
-    }
+    return {
+      code: 0,
+      msg: '点赞成功',
+      data: {
+        updated: res.updated,
+        id: id
+      }
+    };
   }
 };
