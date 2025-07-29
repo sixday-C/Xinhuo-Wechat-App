@@ -5,26 +5,13 @@
     "versionName" : "1.0.0",
     "versionCode" : "100",
     "transformPx" : false,
-	"h5": {
-	  "publicPath": "/",
-	  "devServer": {
-	    "port": 8080,
-	    "https": false
-	  },
-	  "networkTimeout": {
-	    "request": 60000,
-	    "connectSocket": 60000,
-	    "uploadFile": 60000,
-	    "downloadFile": 60000
-	  },
-	  // —— 在这里加上 domains 配置 ——
-	  "domains": {
-	    "https": [
-	      "env-00jxtsjrq0f2.normal.cloudstatic.cn"
-	    ]
-	  }
-	},
-
+    "h5" : {
+        "devServer" : {
+            "host" : "localhost",
+            "port" : 3000,
+            "https" : false
+        }
+    },
     /* 5+App特有相关 */
     "app-plus" : {
         "usingComponents" : true,
@@ -72,7 +59,7 @@
     "quickapp" : {},
     /* 小程序特有相关 */
     "mp-weixin" : {
-        "appid" : "",
+        "appid" : "wxce061f7e6e2aad5b",
         "setting" : {
             "urlCheck" : false
         },
@@ -82,9 +69,7 @@
                 "desc" : "您的位置信息将用于在问题上报时标记准确的地点位置"
             }
         },
-        "requiredPrivateInfos" : [
-            "getLocation"
-        ]
+        "requiredPrivateInfos" : [ "getLocation", "chooseLocation" ]
     },
     "mp-alipay" : {
         "usingComponents" : true
@@ -98,12 +83,5 @@
     "uniStatistics" : {
         "enable" : false
     },
-    "vueVersion" : "3",
-    "h5": {
-      "devServer": {
-        "host": "localhost",
-        "port": 3000,
-        "https": false
-      }
-    }
+    "vueVersion" : "3"
 }
