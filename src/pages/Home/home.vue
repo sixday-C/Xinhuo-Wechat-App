@@ -146,20 +146,20 @@
 		width: 100%;
 		height: 320rpx;
 		margin-top: 30rpx;
-		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+		background: linear-gradient(135deg, #4c83ff 0%, #2962ff 100%);
 		border-radius: 20rpx;
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
 		align-items: center;
 		color: #ffffff;
-		box-shadow: 0 12rpx 32rpx rgba(102, 126, 234, 0.4);
+		box-shadow: 0 12rpx 32rpx rgba(76, 131, 255, 0.4);
 		transition: all 0.3s ease;
 	}
 	
 	.core-action:active {
 		transform: translateY(2rpx);
-		box-shadow: 0 8rpx 24rpx rgba(102, 126, 234, 0.3);
+		box-shadow: 0 8rpx 24rpx rgba(76, 131, 255, 0.3);
 	}
 
 	.core-icon {
