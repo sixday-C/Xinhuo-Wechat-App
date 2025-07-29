@@ -5,20 +5,38 @@
             <view class="image-uploader">
                 <view class="image-item" v-for="(image, index) in imageList" :key="index">
                     <image class="image" :src="image" mode="aspectFill" @click="previewImage(index)"></image>
-                    <view class="close-icon" @click.stop="deleteImage(index)">×</view>
+                    <view class="delete-btn" @click.stop="deleteImage(index)">
+                        <text class="delete-icon">✕</text>
+                    </view>
                 </view>
-                <view v-if="imageList.length < 3" class="upload-btn" @click="chooseImage">+</view>
+                <view v-if="imageList.length < 3" class="upload-btn" @click="chooseImage">
+                    <text class="upload-icon">+</text>
+                    <text class="upload-text">添加图片</text>
+                </view>
+            </view>
+        </view>
+
+        <!-- 新增位置选择区域 -->
+        <view class="section-wrapper">
+            <view class="section-title">位置信息（可选）</view>
+            <view class="location-selector" @click="chooseLocation">
+                <view class="location-content">
+                    <text class="location-icon">📍</text>
+                    <view class="location-text-wrapper">
+                        <text class="location-name">{{ selectedLocation.name || '点击选择位置' }}</text>
+                        <text class="location-address">{{ selectedLocation.address || '选择位置后可在拍照时添加到图片中' }}</text>
+                    </view>
+                </view>
+                <text class="location-arrow">></text>
+            </view>
+            <view v-if="selectedLocation.name" class="location-actions">
+                <button class="clear-location-btn" @click.stop="clearLocation">清除位置</button>
             </view>
         </view>
 
         <view class="section-wrapper">
             <view class="section-title">问题描述</view>
             <textarea class="description-input" v-model="description" placeholder="请详细描述您遇到的问题，以便我们更好地为您解决..." maxlength="500"></textarea>
-        </view>
-
-        <view class="section-wrapper anonymous-section">
-            <text class="anonymous-text">匿名上报</text>
-            <switch :checked="isAnonymous" @change="handleSwitchChange" color="#007AFF" />
         </view>
 
         <button class="submit-btn" @click="handleSubmit">提 交</button>
@@ -34,21 +52,34 @@
                 <!-- 位置信息覆盖层 -->
                 <view class="camera-info-overlay">
                     <view class="info-text">
-                        <text class="location-text">📍 {{ currentLocationInfo.address }}</text>
-                        <text class="coords-text">📐 {{ currentLocationInfo.latitude }}, {{ currentLocationInfo.longitude }}</text>
+                        <text class="location-text">📍 {{ selectedLocation.name || currentLocationInfo.address }}</text>
+                        <text class="coords-text">📐 {{ selectedLocation.latitude || currentLocationInfo.latitude }}, {{ selectedLocation.longitude || currentLocationInfo.longitude }}</text>
                         <text class="time-text">📅 {{ currentTime }}</text>
                         <text class="accuracy-text">📊 精度: {{ currentLocationInfo.accuracy }}米</text>
                     </view>
                 </view>
                 
-                <!-- 相机控制按钮 -->
+                <!-- 重新设计的相机控制按钮 -->
                 <view class="camera-controls">
-                    <view class="control-btn close-btn" @click="closeCamera">
-                        <text>关闭</text>
+                    <!-- 关闭按钮 -->
+                    <view class="close-camera-btn" @click="closeCamera">
+                        <view class="close-btn-circle">
+                            <text class="close-btn-icon">✕</text>
+                        </view>
+                        <text class="close-btn-text">关闭</text>
                     </view>
-                    <view class="control-btn capture-btn" @click="takePhotoWithInfo">
-                        <text>拍照</text>
+                    
+                    <!-- 拍照按钮 -->
+                    <view class="capture-btn-wrapper" @click="takePhotoWithInfo">
+                        <view class="capture-btn-outer">
+                            <view class="capture-btn-inner">
+                                <text class="capture-btn-icon">📷</text>
+                            </view>
+                        </view>
                     </view>
+                    
+                    <!-- 占位空间，保持布局平衡 -->
+                    <view class="placeholder-btn"></view>
                 </view>
             </camera>
         </view>
@@ -70,6 +101,13 @@
                 description: '',
                 isAnonymous: false,
                 showCamera: false,
+                // 选择的位置信息
+                selectedLocation: {
+                    name: '',
+                    address: '',
+                    latitude: '',
+                    longitude: ''
+                },
                 currentLocationInfo: {
                     latitude: '获取中...',
                     longitude: '获取中...',
@@ -85,6 +123,106 @@
             };
         },
         methods: {
+            // 新增：选择位置
+            async chooseLocation() {
+                try {
+                    // 先获取当前位置作为地图中心点
+                    const currentPos = await this.getCurrentLocationForMap();
+                    
+                    uni.chooseLocation({
+                        latitude: currentPos.latitude,
+                        longitude: currentPos.longitude,
+                        success: (res) => {
+                            console.log('位置选择成功：', res);
+                            this.selectedLocation = {
+                                name: res.name || res.address,
+                                address: res.address,
+                                latitude: res.latitude.toFixed(6),
+                                longitude: res.longitude.toFixed(6)
+                            };
+                            
+                            uni.showToast({
+                                title: '位置选择成功',
+                                icon: 'success'
+                            });
+                        },
+                        fail: (err) => {
+                            console.error('位置选择失败：', err);
+                            if (err.errMsg && err.errMsg.includes('cancel')) {
+                                return; // 用户取消，不显示错误提示
+                            }
+                            uni.showToast({
+                                title: '位置选择失败',
+                                icon: 'none'
+                            });
+                        }
+                    });
+                } catch (error) {
+                    console.warn('获取当前位置失败，使用默认位置打开地图', error);
+                    // 如果获取当前位置失败，直接打开位置选择器
+                    uni.chooseLocation({
+                        success: (res) => {
+                            console.log('位置选择成功：', res);
+                            this.selectedLocation = {
+                                name: res.name || res.address,
+                                address: res.address,
+                                latitude: res.latitude.toFixed(6),
+                                longitude: res.longitude.toFixed(6)
+                            };
+                            
+                            uni.showToast({
+                                title: '位置选择成功',
+                                icon: 'success'
+                            });
+                        },
+                        fail: (err) => {
+                            console.error('位置选择失败：', err);
+                            if (err.errMsg && err.errMsg.includes('cancel')) {
+                                return;
+                            }
+                            uni.showToast({
+                                title: '位置选择失败',
+                                icon: 'none'
+                            });
+                        }
+                    });
+                }
+            },
+
+            // 新增：获取当前位置用于地图定位（不需要权限弹窗）
+            async getCurrentLocationForMap() {
+                return new Promise((resolve, reject) => {
+                    uni.getLocation({
+                        type: 'gcj02',
+                        success: (res) => {
+                            console.log('地图定位获取成功：', res);
+                            resolve({
+                                latitude: res.latitude,
+                                longitude: res.longitude
+                            });
+                        },
+                        fail: (err) => {
+                            console.error('地图定位获取失败：', err);
+                            reject(err);
+                        }
+                    });
+                });
+            },
+
+            // 新增：清除位置
+            clearLocation() {
+                this.selectedLocation = {
+                    name: '',
+                    address: '',
+                    latitude: '',
+                    longitude: ''
+                };
+                uni.showToast({
+                    title: '位置已清除',
+                    icon: 'success'
+                });
+            },
+
             // 请求位置权限
             async requestLocationPermission() {
                 return new Promise((resolve) => {
@@ -111,7 +249,7 @@
                 });
             },
 
-            // 获取当前位置信息
+            // 获取当前位置信息（仅用于获取坐标和精度）
             async getCurrentLocation() {
                 return new Promise((resolve, reject) => {
                     if (!this.locationPermissionGranted) {
@@ -128,12 +266,13 @@
                         highAccuracyExpireTime: 4000,
                         success: (res) => {
                             console.log('位置获取成功：', res);
+                            
                             resolve({
                                 latitude: res.latitude.toFixed(6),
                                 longitude: res.longitude.toFixed(6),
                                 altitude: res.altitude || 0,
                                 accuracy: Math.round(res.accuracy) || 0,
-                                address: res.address || `经度${res.latitude.toFixed(4)} 纬度${res.longitude.toFixed(4)}`
+                                address: '当前位置'
                             });
                         },
                         fail: (err) => {
@@ -257,12 +396,12 @@
                                 ctx.drawImage(imagePath, 0, 0, imageInfo.width, imageInfo.height);
                                 
                                 // 计算信息框尺寸 - 根据图片尺寸调整
-                                const scale = Math.min(imageInfo.width / 750, imageInfo.height / 1334); // 以iPhone 6/7/8为基准
+                                const scale = Math.min(imageInfo.width / 750, imageInfo.height / 1334);
                                 const infoWidth = Math.min(imageInfo.width * 0.85, 600 * scale);
                                 const infoHeight = 140 * scale;
                                 const margin = 20 * scale;
-                                const fontSize = Math.max(16 * scale, 12); // 最小字体12px
-                                const lineHeight = Math.max(25 * scale, 18); // 最小行高18px
+                                const fontSize = Math.max(16 * scale, 12);
+                                const lineHeight = Math.max(25 * scale, 18);
                                 
                                 // 添加半透明背景
                                 ctx.setFillStyle('rgba(0, 0, 0, 0.50)');
@@ -273,14 +412,18 @@
                                 ctx.setFontSize(fontSize);
                                 ctx.setTextAlign('left');
                                 
-                                // 添加文字信息
+                                // 添加文字信息 - 优先使用选择的位置信息
                                 const textX = margin + 15 * scale;
                                 let textY = margin + 30 * scale;
                                 
-                                ctx.fillText(`📍 ${this.currentLocationInfo.address}`, textX, textY);
+                                const displayAddress = this.selectedLocation.name || this.currentLocationInfo.address;
+                                const displayLatitude = this.selectedLocation.latitude || this.currentLocationInfo.latitude;
+                                const displayLongitude = this.selectedLocation.longitude || this.currentLocationInfo.longitude;
+                                
+                                ctx.fillText(`📍 ${displayAddress}`, textX, textY);
                                 textY += lineHeight;
                                 
-                                ctx.fillText(`📐 ${this.currentLocationInfo.latitude}, ${this.currentLocationInfo.longitude}`, textX, textY);
+                                ctx.fillText(`📐 ${displayLatitude}, ${displayLongitude}`, textX, textY);
                                 textY += lineHeight;
                                 
                                 ctx.fillText(`📅 ${this.currentTime}`, textX, textY);
@@ -455,32 +598,32 @@
                     // 获取用户信息
                     const userInfo = uni.getStorageSync('userInfo') || {};
         
-                    // 获取当前用户ID（可以是openid或其他唯一标识）
+                    // 获取当前用户ID
                     let userid = uni.getStorageSync('userid');
                     if (!userid) {
-                    // 如果没有userid，可以生成一个或使用openid
-                    userid = userInfo.openid || `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-                    uni.setStorageSync('userid', userid);
-                }
-        
-                // 上传图片到云存储
-                const imageUrls = await this.uploadImages();
-        
-                // 调用云函数提交问题上报
-                const response = await uniCloud.callFunction({
-                    name: 'add-report-demo',
-                    data: {
-                        userid: userid,  // 添加用户ID
-                        description: this.description,
-                        isAnonymous: this.isAnonymous,
-                        imageUrls: imageUrls,
-                        userPhone: this.isAnonymous ? '' : userInfo.phone,
-                        userName: this.isAnonymous ? '' : userInfo.name,
-                        userAddress: this.isAnonymous ? '' : userInfo.address,
-                        locationInfo: this.locationPermissionGranted ? this.currentLocationInfo : null,
-                        reportTime: new Date().toISOString()
+                        userid = userInfo.openid || `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                        uni.setStorageSync('userid', userid);
                     }
-                });
+        
+                    // 上传图片到云存储
+                    const imageUrls = await this.uploadImages();
+        
+                    // 调用云函数提交问题上报
+                    const response = await uniCloud.callFunction({
+                        name: 'add-report-demo',
+                        data: {
+                            userid: userid,
+                            description: this.description,
+                            isAnonymous: this.isAnonymous,
+                            imageUrls: imageUrls,
+                            userPhone: this.isAnonymous ? '' : userInfo.phone,
+                            userName: this.isAnonymous ? '' : userInfo.name,
+                            userAddress: this.isAnonymous ? '' : userInfo.address,
+                            // 优先使用选择的位置信息
+                            locationInfo: this.selectedLocation.name ? this.selectedLocation : (this.locationPermissionGranted ? this.currentLocationInfo : null),
+                            reportTime: new Date().toISOString()
+                        }
+                    });
                     
                     uni.hideLoading();
                     
@@ -493,6 +636,7 @@
                         this.description = '';
                         this.imageList = [];
                         this.isAnonymous = false;
+                        this.selectedLocation = { name: '', address: '', latitude: '', longitude: '' };
                         // 返回上一页
                         setTimeout(() => {
                             uni.navigateBack();
@@ -587,41 +731,75 @@
         height: 150rpx;
         margin-right: 20rpx;
         margin-bottom: 20rpx;
+        border-radius: 12rpx;
+        overflow: hidden;
     }
 
     .image {
         width: 100%;
         height: 100%;
-        border-radius: 10rpx;
+        border-radius: 12rpx;
     }
 
-    .close-icon {
+    /* 重新设计的删除按钮 */
+    .delete-btn {
         position: absolute;
-        top: -10rpx;
-        right: -10rpx;
-        width: 36rpx;
-        height: 36rpx;
-        background-color: rgba(0, 0, 0, 0.6);
-        color: white;
+        top: -8rpx;
+        right: -8rpx;
+        width: 32rpx;
+        height: 32rpx;
+        background: linear-gradient(135deg, #ff6b6b, #ff5252);
         border-radius: 50%;
         display: flex;
         justify-content: center;
         align-items: center;
-        font-size: 24rpx;
-        line-height: 36rpx;
+        box-shadow: 0 2rpx 8rpx rgba(255, 107, 107, 0.4);
+        border: 2rpx solid #ffffff;
+        z-index: 10;
     }
 
+    .delete-btn:active {
+        transform: scale(0.9);
+        transition: transform 0.1s ease;
+    }
+
+    .delete-icon {
+        color: #ffffff;
+        font-size: 18rpx;
+        font-weight: bold;
+        line-height: 1;
+    }
+
+    /* 重新设计的上传按钮 */
     .upload-btn {
         width: 150rpx;
         height: 150rpx;
-        border: 2rpx dashed #ccc;
-        border-radius: 10rpx;
+        border: 2rpx dashed #d0d0d0;
+        border-radius: 12rpx;
         display: flex;
+        flex-direction: column;
         justify-content: center;
         align-items: center;
+        background: linear-gradient(145deg, #f8f9fa, #e9ecef);
+        transition: all 0.3s ease;
+    }
+
+    .upload-btn:active {
+        background: linear-gradient(145deg, #e9ecef, #dee2e6);
+        transform: scale(0.98);
+    }
+
+    .upload-icon {
         font-size: 60rpx;
-        color: #ccc;
-        background-color: #fafafa;
+        color: #6c757d;
+        margin-bottom: 8rpx;
+        font-weight: 300;
+    }
+
+    .upload-text {
+        font-size: 20rpx;
+        color: #6c757d;
+        font-weight: 500;
     }
 
     .description-input {
@@ -698,41 +876,103 @@
         margin-bottom: 5rpx;
     }
 
+    /* 重新设计的相机控制按钮 */
     .camera-controls {
         position: absolute;
-        bottom: 100rpx;
+        bottom: 80rpx;
         left: 0;
         right: 0;
         display: flex;
-        justify-content: space-around;
+        justify-content: space-between;
         align-items: center;
+        padding: 0 60rpx;
         z-index: 10000;
     }
 
-    .control-btn {
-        padding: 20rpx 40rpx;
-        border-radius: 50rpx;
+    /* 关闭按钮 */
+    .close-camera-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 80rpx;
+    }
+
+    .close-btn-circle {
+        width: 60rpx;
+        height: 60rpx;
+        background: rgba(0, 0, 0, 0.6);
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        backdrop-filter: blur(10rpx);
+        border: 1rpx solid rgba(255, 255, 255, 0.2);
+        margin-bottom: 10rpx;
+    }
+
+    .close-btn-circle:active {
+        background: rgba(0, 0, 0, 0.8);
+        transform: scale(0.9);
+        transition: all 0.1s ease;
+    }
+
+    .close-btn-icon {
+        color: #ffffff;
+        font-size: 24rpx;
+        font-weight: bold;
+    }
+
+    .close-btn-text {
+        color: #ffffff;
+        font-size: 22rpx;
+        font-weight: 500;
+    }
+
+    /* 拍照按钮 - 调整大小 */
+    .capture-btn-wrapper {
         display: flex;
         justify-content: center;
         align-items: center;
     }
 
-    .close-btn {
-        background-color: rgba(255, 255, 255, 0.3);
-        color: #FFFFFF;
+    .capture-btn-outer {
+        width: 140rpx;
+        height: 140rpx;
+        border: 4rpx solid rgba(255, 255, 255, 0.8);
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10rpx);
     }
 
-    .capture-btn {
-        background-color: #007AFF;
-        color: #FFFFFF;
+    .capture-btn-outer:active {
+        transform: scale(0.95);
+        border-color: rgba(255, 255, 255, 1);
+        transition: all 0.1s ease;
+    }
+
+    .capture-btn-inner {
         width: 120rpx;
         height: 120rpx;
+        background: linear-gradient(135deg, #007AFF, #0056d6);
         border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 4rpx 16rpx rgba(0, 122, 255, 0.4);
     }
 
-    .control-btn text {
-        font-size: 28rpx;
-        font-weight: bold;
+    .capture-btn-icon {
+        color: #ffffff;
+        font-size: 42rpx;
+    }
+
+    /* 占位按钮，保持布局平衡 */
+    .placeholder-btn {
+        width: 80rpx;
+        height: 60rpx;
     }
 
     /* 隐藏的Canvas */
@@ -741,5 +981,68 @@
         top: -9999px;
         left: -9999px;
         z-index: -1;
+    }
+
+    /* 新增位置选择相关样式 */
+    .location-selector {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20rpx;
+        background-color: #f9f9f9;
+        border-radius: 10rpx;
+        border: 1rpx solid #e0e0e0;
+        margin-bottom: 10rpx;
+    }
+
+    .location-content {
+        display: flex;
+        align-items: center;
+        flex: 1;
+    }
+
+    .location-icon {
+        font-size: 32rpx;
+        margin-right: 15rpx;
+    }
+
+    .location-text-wrapper {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+    }
+
+    .location-name {
+        font-size: 28rpx;
+        color: #333;
+        font-weight: 500;
+        margin-bottom: 5rpx;
+    }
+
+    .location-address {
+        font-size: 24rpx;
+        color: #999;
+        line-height: 1.4;
+    }
+
+    .location-arrow {
+        font-size: 28rpx;
+        color: #ccc;
+        font-weight: bold;
+    }
+
+    .location-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 10rpx;
+    }
+
+    .clear-location-btn {
+        background-color: #ff4444;
+        color: white;
+        border: none;
+        border-radius: 20rpx;
+        padding: 10rpx 20rpx;
+        font-size: 24rpx;
     }
 </style>
