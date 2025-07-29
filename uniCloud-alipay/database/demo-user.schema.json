@@ -1,1 +1,154 @@
-{"bsonType":"object","required":["phone","password"],"permission":{"read":true,"create":true,"update":true,"delete":false},"properties":{"_id":{"description":"ID，系统自动生成"},"name":{"title":"姓名","label":"名字","description":"请输入姓名","bsonType":"string","minLength":2,"maxLength":18,"errorMessage":{"required":"{label}必填","minLength":"{title}不能小于{minLength}个字符","maxLength":"{label}不能大于{maxLength}个字符"}},"age":{"title":"年龄","description":"请输入年龄","bsonType":"int"},"phone":{"title":"手机号","description":"请填写手机号","bsonType":"string","errorMessage":{"required":"{label}必填","pattern":"{label}格式不正确"}},"password":{"title":"密码","description":"请填写登录密码","bsonType":"string","minLength":6,"errorMessage":{"required":"{label}必填","minLength":"{label}不能少于{minLength}位"}},"address":{"title":"住址","description":"请填写楼宇门牌","bsonType":"string","maxLength":50,"errorMessage":{"maxLength":"{label}不能超过{maxLength}字符"}},"gender":{"title":"性别","bsonType":"int","enum":[{"text":"未知","value":0},{"text":"男","value":1},{"text":"女","value":2}],"defaultValue":0},"createTime":{"title":"时间函数","bsonType":"timestamp"},"IP":{"title":"IP","bsonType":"string","forceDefaultValue":{"$env":"clientIP"}}}}
+{
+  "bsonType": "object",
+  "required": [],
+  "permission": {
+    "read": true,
+    "create": true,
+    "update": true,
+    "delete": false
+  },
+  "properties": {
+    "_id": {
+      "description": "用户ID，系统自动生成"
+    },
+    "phone": {
+      "title": "手机号",
+      "description": "用户手机号码",
+      "bsonType": "string",
+      "pattern": "^1[3-9]\\d{9}$",
+      "errorMessage": {
+        "pattern": "请输入正确的手机号格式"
+      }
+    },
+    "password": {
+      "title": "密码",
+      "description": "登录密码",
+      "bsonType": "string",
+      "minLength": 6,
+      "maxLength": 20,
+      "errorMessage": {
+        "minLength": "密码不能少于6位",
+        "maxLength": "密码不能超过20位"
+      }
+    },
+    "openid": {
+      "title": "微信OpenID",
+      "description": "微信用户唯一标识",
+      "bsonType": "string"
+    },
+    "unionid": {
+      "title": "微信UnionID",
+      "description": "微信开放平台唯一标识",
+      "bsonType": "string"
+    },
+    "name": {
+      "title": "姓名",
+      "description": "用户真实姓名",
+      "bsonType": "string",
+      "minLength": 1,
+      "maxLength": 20,
+      "trim": "both",
+      "errorMessage": {
+        "minLength": "姓名不能为空",
+        "maxLength": "姓名不能超过20个字符"
+      }
+    },
+    "nickname": {
+      "title": "昵称",
+      "description": "用户昵称",
+      "bsonType": "string",
+      "maxLength": 30,
+      "trim": "both"
+    },
+    "avatar": {
+      "title": "头像",
+      "description": "用户头像URL",
+      "bsonType": "string",
+      "format": "url"
+    },
+    "gender": {
+      "title": "性别",
+      "description": "用户性别",
+      "bsonType": "int",
+      "enum": [
+        {"text": "未知", "value": 0},
+        {"text": "男", "value": 1},
+        {"text": "女", "value": 2}
+      ],
+      "defaultValue": 0
+    },
+    "age": {
+      "title": "年龄",
+      "description": "用户年龄",
+      "bsonType": "int",
+      "minimum": 1,
+      "maximum": 150
+    },
+    "address": {
+      "title": "地址",
+      "description": "用户地址信息",
+      "bsonType": "string",
+      "maxLength": 200,
+      "trim": "both",
+      "errorMessage": {
+        "maxLength": "地址不能超过200个字符"
+      }
+    },
+    "loginType": {
+      "title": "登录方式",
+      "description": "用户主要登录方式",
+      "bsonType": "string",
+      "enum": [
+        {"text": "密码登录", "value": "password"},
+        {"text": "微信登录", "value": "wechat"},
+        {"text": "混合登录", "value": "hybrid"}
+      ],
+      "defaultValue": "password"
+    },
+    "status": {
+      "title": "账号状态",
+      "description": "用户账号状态",
+      "bsonType": "int",
+      "enum": [
+        {"text": "正常", "value": 1},
+        {"text": "禁用", "value": 0},
+        {"text": "审核中", "value": 2}
+      ],
+      "defaultValue": 1
+    },
+    "lastLoginTime": {
+      "title": "最后登录时间",
+      "description": "用户最后登录时间",
+      "bsonType": "timestamp"
+    },
+    "lastLoginIP": {
+      "title": "最后登录IP",
+      "description": "用户最后登录的IP地址",
+      "bsonType": "string"
+    },
+    "createTime": {
+      "title": "创建时间",
+      "description": "账号创建时间",
+      "bsonType": "timestamp",
+      "forceDefaultValue": {
+        "$env": "now"
+      }
+    },
+    "updateTime": {
+      "title": "更新时间",
+      "description": "信息最后更新时间",
+      "bsonType": "timestamp",
+      "forceDefaultValue": {
+        "$env": "now"
+      }
+    },
+    "registerIP": {
+      "title": "注册IP",
+      "description": "用户注册时的IP地址",
+      "bsonType": "string",
+      "forceDefaultValue": {
+        "$env": "clientIP"
+      }
+    }
+  }
+}

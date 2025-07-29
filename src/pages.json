@@ -1,15 +1,39 @@
 {
     "pages": [
         {
+            "path": "pages/index/index",
+            "style": {
+                "navigationStyle": "custom",
+                "navigationBarTitleText": "启动页"
+            }
+        },
+        {
+            "path": "pages/Login/Login",
+            "style": {
+                "navigationBarTitleText": "登录",
+                "navigationBarBackgroundColor": "#007AFF",
+                "navigationBarTextStyle": "white"
+            }
+        },
+        {
             "path": "pages/Home/home",
             "style": {
-                "navigationBarTitleText": "办事"
+                "navigationBarTitleText": "办事",
+                "enablePullDownRefresh": true
             }
         },
         {
             "path": "pages/Notice/notice",
             "style": {
-                "navigationBarTitleText": "公示栏"
+                "navigationBarTitleText": "公示栏",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/Profile/profile",
+            "style": {
+                "navigationBarTitleText": "我的",
+                "enablePullDownRefresh": true
             }
         },
         {
@@ -17,18 +41,6 @@
             "style": {
                 "navigationStyle": "custom", 
                 "navigationBarTitleText": ""
-            }
-        },
-        {
-            "path": "pages/Profile/profile",
-            "style": {
-                "navigationBarTitleText": "我的"
-            }
-        },
-        {
-            "path": "pages/Login/Login",
-            "style": {
-                "navigationBarTitleText": "登录"
             }
         },
         {
