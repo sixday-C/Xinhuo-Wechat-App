@@ -1,6 +1,6 @@
 'use strict';
-
 const db = uniCloud.database();
+const url = 'https://api.weixin.qq.com/sns/jscode2session';
 
 const ERROR_MESSAGES = {
   INVALID_CODE: '无效的 code',
@@ -9,7 +9,7 @@ const ERROR_MESSAGES = {
 };
 
 async function getConfig() {
-  const res = await db.collection('config').doc('wx_config').get();
+  const res = await db.collection('config').where({ config_key: 'wx_config' }).get();
   if (!res.data || res.data.length === 0) {
     throw new Error(ERROR_MESSAGES.MISSING_CONFIG);
   }
@@ -22,23 +22,47 @@ exports.main = async (event) => {
     if (!code || typeof code !== 'string') {
       throw new Error(ERROR_MESSAGES.INVALID_CODE);
     }
+    
+    console.log('输入 code:', code);
     const config = await getConfig();
-    const res = await uniCloud.httpclient.request({
-      url: 'https://api.weixin.qq.com/sns/jscode2session',
+    console.log('配置:', config);
+    
+    const res = await uniCloud.httpclient.request(url, {
       method: 'GET',
       data: {
         appid: config.appId,
         secret: config.appSecret,
         js_code: code,
         grant_type: 'authorization_code'
-      }
+      },
+      dataType: 'json' // 添加这个参数确保返回 JSON
     });
-    if (res.data.errcode && res.data.errcode !== 0) {
-      throw new Error(ERROR_MESSAGES.WX_API_ERROR(res.data.errmsg, res.data.errcode));
+    
+    console.log('微信 API 响应:', res.data);
+    
+    // 如果 res.data 是 Buffer，需要转换
+    let responseData = res.data;
+    if (Buffer.isBuffer(responseData)) {
+      try {
+        responseData = JSON.parse(responseData.toString());
+        console.log('解析后的响应:', responseData);
+      } catch (parseError) {
+        console.error('JSON 解析错误:', parseError);
+        throw new Error('响应数据解析失败');
+      }
     }
-    if (res.data.openid) {
-      return { openid: res.data.openid };
+    
+    if (responseData.errcode && responseData.errcode !== 0) {
+      throw new Error(ERROR_MESSAGES.WX_API_ERROR(responseData.errmsg, responseData.errcode));
     }
+    
+    if (responseData.openid) {
+      return { 
+        openid: responseData.openid,
+        session_key: responseData.session_key // 也可以返回 session_key
+      };
+    }
+    
     throw new Error('获取OpenID失败');
   } catch (err) {
     console.error('云函数错误:', err.message);

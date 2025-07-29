@@ -9,8 +9,34 @@
 		"delete": false
 	},
 	"properties": {
-		"_id": {
-			"description": "ID，系统自动生成"
+		
+		  "bsonType": "object",
+		  "required": ["openid"],
+		  "properties": {
+		    "_id": {
+		      "description": "ID，系统自动生成"
+		    },
+		    "openid": {
+		      "bsonType": "string",
+		      "description": "微信用户的openid",
+		      "title": "用户OpenID"
+		    },
+		    "session_key": {
+		      "bsonType": "string",
+		      "description": "微信会话密钥",
+		      "title": "会话密钥"
+		    },
+		    "createTime": {
+		      "bsonType": "date",
+		      "description": "创建时间",
+		      "title": "创建时间"
+		    },
+		    "updateTime": {
+		      "bsonType": "date", 
+		      "description": "更新时间",
+		      "title": "更新时间"
+		    }
+		  
 		}
 	}
 }

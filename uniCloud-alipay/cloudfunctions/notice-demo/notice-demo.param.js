@@ -1,23 +1,18 @@
 // 本文件中的内容将在云对象【运行】时解析为运行参数
 // 配置教程参考：https://uniapp.dcloud.net.cn/uniCloud/rundebug.html#run-obj-param
 
-// 测试创建公告（带图片）
+// 测试创建公告
 createNotice({
 	"community_id": "default",
-	"title": "🖼️ 测试图片公告",
-	"content": "这是一个包含图片的测试公告，用于验证图片显示功能是否正常工作。包含多张测试图片，点击可以预览大图。",
-	"summary": "测试图片功能的公告摘要",
+	"title": "测试文章标题",
+	"content": "这是一个测试文章的内容，用于验证公告创建功能是否正常工作。",
 	"notice_type": "general",
-	"priority": 1,
-	"is_top": true,
-	"is_important": true,
-	"images": [
-		"https://via.placeholder.com/600x400/007AFF/FFFFFF?text=封面图片",
-		"https://via.placeholder.com/600x400/FF3333/FFFFFF?text=图片2",
-		"https://via.placeholder.com/600x400/33CC33/FFFFFF?text=图片3"
-	],
+	"priority": 2,
+	"is_top": false,
+	"images": [],
 	"status": 1,
-	"allow_comment": true
+	"like_count": 0,
+	"comment_count": 0
 })
 
 // 测试获取公告列表

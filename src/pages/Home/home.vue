@@ -20,15 +20,15 @@
 		</swiper>
  
 		<view class="quick-actions">
-			<view class="action-btn" @tap="handleOnlineService">
-				<text>线上客服</text>
-			</view>
 			<view class="action-btn" @tap="handleOfflineAppointment">
-				<text>线下预约</text>
+				<view class="btn-icon">📅</view>
+				<text class="btn-title">线下预约</text>
+				<text class="btn-desc">预约社区服务窗口</text>
 			</view>
 		</view>
 
 		<view class="core-action" @tap="handleReportIssue">
+			<view class="core-icon">📝</view>
 			<text class="core-action-text">事务上报</text>
 			<text class="core-action-subtext">点击此处快速反馈问题</text>
 		</view>
@@ -43,12 +43,7 @@
 			}
 		},
 		methods: {
-			// 点击"线上客服"的事件处理
-			handleOnlineService() {
-							uni.navigateTo({
-								url:'/uni_modules/uni-id-pages/pages/login/login-withpwd'
-							})
-						},
+			
 			// 点击"线下预约"的事件处理
 			handleOfflineAppointment() {
 				uni.navigateTo({
@@ -79,10 +74,11 @@
 	/* 1. 滚动栏样式 */
 	.swiper {
 		width: 100%;
-		height: 500rpx;
+		height: 400rpx;
 		border-radius: 20rpx;
 		overflow: hidden;
-		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
+		box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.1);
+		margin-bottom: 10rpx;
 	}
 
 	.swiper-item {
@@ -99,58 +95,88 @@
 		font-weight: bold;
 	}
 
-	/* 2. 中间快捷功能区样式 */
+			/* 2. 中间快捷功能区样式 */
 	.quick-actions {
 		display: flex;
-		justify-content: space-between;
+		justify-content: center;
 		width: 100%;
-		margin-top: 25rpx;
+		margin-top: 30rpx;
 	}
 
 	.action-btn {
-		width: 48%;
+		width: 100%;
 		height: 200rpx;
 		display: flex;
+		flex-direction: column;
 		justify-content: center;
 		align-items: center;
 		background-color: #ffffff;
-		border-radius: 15rpx;
-		font-size: 30rpx;
-		color: #333;
-		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.06);
+		border-radius: 16rpx;
+		box-shadow: 0 6rpx 20rpx rgba(0, 0, 0, 0.08);
+		transition: all 0.3s ease;
 	}
 	
 	.action-btn:active {
-		background-color: #fafafa;
+		transform: translateY(2rpx);
+		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+	}
+
+	.btn-icon {
+		font-size: 48rpx;
+		margin-bottom: 16rpx;
+	}
+
+	.btn-title {
+		font-size: 32rpx;
+		font-weight: 600;
+		color: #333;
+		display: block;
+		margin-bottom: 8rpx;
+	}
+
+	.btn-desc {
+		font-size: 24rpx;
+		color: #666;
+		display: block;
+		text-align: center;
 	}
 
 	/* 3. 事务上报样式 */
 	.core-action {
 		width: 100%;
-		height: 400rpx;
+		height: 320rpx;
 		margin-top: 30rpx;
-		background-image: linear-gradient(135deg, #4c83ff, #2962ff);
+		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 		border-radius: 20rpx;
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
 		align-items: center;
 		color: #ffffff;
-		box-shadow: 0 8rpx 20rpx rgba(41, 98, 255, 0.3);
+		box-shadow: 0 12rpx 32rpx rgba(102, 126, 234, 0.4);
+		transition: all 0.3s ease;
 	}
 	
 	.core-action:active {
+		transform: translateY(2rpx);
+		box-shadow: 0 8rpx 24rpx rgba(102, 126, 234, 0.3);
+	}
+
+	.core-icon {
+		font-size: 64rpx;
+		margin-bottom: 16rpx;
 		opacity: 0.9;
 	}
 
 	.core-action-text {
-		font-size: 40rpx;
+		font-size: 36rpx;
 		font-weight: bold;
+		margin-bottom: 8rpx;
 	}
 
 	.core-action-subtext {
 		font-size: 24rpx;
-		margin-top: 10rpx;
 		opacity: 0.8;
+		text-align: center;
 	}
 </style>
